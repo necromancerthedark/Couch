@@ -28,7 +28,7 @@ final class ScreenshotDelegate: NSObject, NSApplicationDelegate {
         }
         controller.nav.selection = tab
         // Tuning is a long page; capture it tall so nothing is cut off.
-        controller.window?.setContentSize(NSSize(width: 900, height: tab == .tuning ? 880 : 620))
+        controller.window?.setContentSize(NSSize(width: 900, height: (tab == .tuning || tab == .apps) ? 880 : 620))
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.9) { [self] in
             save(name: tab.rawValue.lowercased())
             capture(tabs.dropFirst())

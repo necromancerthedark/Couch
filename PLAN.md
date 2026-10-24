@@ -142,6 +142,9 @@ Final key choices are yours to tweak in code (single constant table).
   visual map of what each button does, inspect the pad live, and debug.
 - The menu-bar app stays the main interface. Mapping stays fixed (ADR-004).
 
+### Phase 9 — App Allowlist (no input while gaming) — **DONE** (see §15, ADR-023)
+- Couch acts only when the frontmost app is on an allowlist.
+
 ## 7. Permissions Required
 
 - **Accessibility** — required to post `CGEvent`s (output layer only).
@@ -172,7 +175,11 @@ Controller-mouse/
 
 ## 10. Next Step
 
-All phases done. Possible extras: rebindable mapping, cursor mode (ADR-002).
+Phases 0–9 done. Next, in rough order: CI (a GitHub Actions build and test job;
+unit tests exist now, run with `Scripts/test.sh`), more tests, other pads (needs
+hardware), notarization (needs a paid Apple Developer ID).
+Decided against: rebindable mapping (mapping stays fixed, ADR-004). Parked:
+cursor mode (ADR-002), a big scope change from "media remote".
 
 ## 11. Next Update: Menu Toggle Switches (Phase 6)
 
@@ -483,7 +490,7 @@ here (ADR-004 stands).
 
 ## 14. Backlog (to discuss): Couch while gaming
 
-**Status:** noted, not planned. Decide the approach before any code.
+**Status:** decided, see §15 (app allowlist). Kept below as the background.
 
 ### Problem
 Couch receives pad input even when another app is frontmost
@@ -515,3 +522,101 @@ Switch **Remote** off (menu or Settings → General) before gaming, or quit Couc
 - Where does the list live: `config.json`, the Settings window, or both?
 - Should media keys (play/pause, volume) still work everywhere while seek and
   fullscreen keys only work in listed apps?
+
+## 15. Next Update: App Allowlist (Phase 9)
+
+### Goal
+Couch acts only when the **frontmost app** is on an allowlist (IINA, browsers and
+so on). Otherwise it ignores the pad, so games get no injected keys (§14).
+
+### Decisions
+| Question | Decision |
+|---|---|
+| Allowlist or denylist | **Allowlist.** Fails safe: any unlisted game is silent. |
+| Media keys everywhere | **No, all-or-nothing.** Possible later as an opt-in. `Remote` stays the manual override. |
+| Where is the UI | A separate **Apps** tab in the Settings window. |
+| Default list | The list below. New apps can be added. |
+
+### Behaviour
+- Frontmost app on the list: Couch behaves as today.
+- Frontmost app not on the list: **paused**. No actions, repeaters stopped, pad
+  state still tracked, so a button held while switching apps does not fire on
+  return (same rule as Remote off).
+- Mode: **Allowlist** (default) or **Off** (act everywhere, as before).
+- Couch's own Settings window is not on the list, so the pad does not act while
+  it is frontmost. The Controller tab still shows live input and the Debug
+  action tester still works, because neither goes through the gate.
+
+### Default list
+IINA `com.colliderli.iina`, Safari `com.apple.Safari`, Chrome
+`com.google.Chrome`, Firefox `org.mozilla.firefox`, Arc
+`company.thebrowser.Browser`, Brave `com.brave.Browser`, Edge
+`com.microsoft.edgemac`, VLC `org.videolan.vlc`, QuickTime Player
+`com.apple.QuickTimePlayerX`, Music `com.apple.Music`, TV `com.apple.TV`,
+Spotify `com.spotify.client`. The IDs for IINA, Safari, Chrome, Brave,
+QuickTime, Music, TV and Spotify were checked on this Mac. Firefox, Arc, Edge
+and VLC are not installed here and come from their published IDs, so they need
+a check.
+
+### Design
+- **Detection:** `NSWorkspace.shared.frontmostApplication`, kept current by a
+  `FrontmostAppMonitor` observing `NSWorkspace.didActivateApplicationNotification`.
+  No new permission, no signing or Accessibility grant change.
+- **Filter:** a pure `AppFilter` struct (mode, set of bundle ids,
+  `allows(bundleID)`), so it is trivial to unit test.
+- **Gate:** in `MediaController`, `isActive = enabled && filterAllows`. It
+  replaces the `enabled` checks in `handle` and the repeater `fire` closures.
+  When it turns false (Remote off, or the app changes) it stops repeaters and
+  syncs edge and held state without acting, as the Remote-off path does today.
+- **Config (`config.json`):** `"appFilter": { "mode": "allowlist", "apps": ["com.colliderli.iina", ...] }`.
+  Validated: unknown mode falls back to allowlist, blank ids are dropped,
+  an empty list is allowed (Couch then never acts, with a warning in Debug).
+  Defaults live in `Mapping.swift`.
+- **Menu:** the controller line reads "paused in <App>" when blocked. A menu item
+  "Allow <App>" adds the frontmost app in one click. Opening the status menu
+  does not change the frontmost app, so it always names the app you were in.
+  The menu-bar icon is outline while paused.
+- **Apps tab:** list with app icon, name and bundle id, a remove button per row,
+  **Add running app…** (menu of running apps), **Add app…** (file picker for a
+  `.app`, reads its bundle id), **Reset to defaults**, and a mode switch
+  (Allowlist / Off). Changes apply live and save to `config.json`.
+- **Debug:** diagnostics show the frontmost app, mode and whether Couch is
+  paused. The event feed logs each pause and resume.
+
+### Tradeoffs and risks
+- **Background playback:** a player that is not frontmost cannot be controlled.
+  This is the price of the allowlist (see the decision above).
+- **Silent failure:** a new player is not listed and nothing happens. Mitigation:
+  the "paused in <App>" label and the one-click "Allow" item.
+- **PWAs and web apps** have their own bundle ids and must be added one by one.
+- **Focus flicker** (notification overlays) could drop a held repeat. The gate
+  resets cleanly when the app returns.
+- **Behaviour change:** a fresh install no longer acts in unlisted apps. Note it
+  in the CHANGELOG as a deliberate default.
+
+### Implementation steps
+1. `AppFilter` and `FrontmostAppMonitor`, with tests if XCTest is available.
+2. `appFilter` in `Config` and `SettingsStore`, validation, defaults.
+3. Gate in `MediaController` (edges, triggers, stick, repeaters), live reconfigure.
+4. Menu: paused label, "Allow <App>" item, icon state.
+5. Apps tab (list, add running, add from file, reset, mode).
+6. Debug diagnostics and event lines.
+7. Docs: ADR-023, README (new section and screenshot), CHANGELOG, mark Phase 9
+   done. Regenerate screenshots with `Scripts/make-screenshots.sh`.
+8. Release v0.4.
+
+### Test plan
+- IINA or a browser frontmost: every control works as before.
+- Terminal or a game frontmost: no key events, no volume or brightness change.
+  The menu says "paused in <App>" and the icon is outline.
+- Hold the stick, switch to an unlisted app, then back: nothing fires on return.
+- "Allow <App>" adds it and Couch starts acting at once. Remove it, it stops.
+- Add apps through both paths. Hand-edit `config.json`, reopen the window, the
+  list matches. A bad mode or blank id is cleaned up and logged.
+- Mode Off behaves like today. Remote off still wins over the filter.
+- Rebuild with the stable identity: `trusted=true` stays.
+
+### Open questions (defaults chosen)
+- Opt-in "media keys everywhere": default **not in this phase**.
+- Treat apps that declare the Games category as always blocked: default **no**
+  (many games do not declare it; an allowlist already covers them).

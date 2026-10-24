@@ -6,6 +6,7 @@ enum SettingsTab: String, CaseIterable, Identifiable {
     case general = "General"
     case controller = "Controller"
     case tuning = "Tuning"
+    case apps = "Apps"
     case debug = "Debug"
     case about = "About"
 
@@ -16,6 +17,7 @@ enum SettingsTab: String, CaseIterable, Identifiable {
         case .general: return "switch.2"
         case .controller: return "gamecontroller"
         case .tuning: return "slider.horizontal.3"
+        case .apps: return "app.badge.checkmark"
         case .debug: return "ladybug"
         case .about: return "info.circle"
         }
@@ -77,6 +79,7 @@ struct RootView: View {
         case .general: GeneralView(model: model)
         case .controller: ControllerView(model: model)
         case .tuning: TuningView(model: model, settings: model.settings, pad: model.pad)
+        case .apps: AppsView(model: model, settings: model.settings, front: model.front)
         case .debug: DebugView(model: model, events: model.events)
         case .about: AboutView()
         }

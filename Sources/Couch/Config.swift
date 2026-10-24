@@ -17,6 +17,7 @@ enum Config {
         var stickDeadzone: Float
         var volumeSlow: TimeInterval
         var volumeFast: TimeInterval
+        var appFilter: AppFilter
     }
 
     static let defaults = Values(
@@ -25,7 +26,8 @@ enum Config {
         seekFast: Mapping.seekFastInterval,
         stickDeadzone: Mapping.stickDeadzone,
         volumeSlow: Mapping.volumeSlowInterval,
-        volumeFast: Mapping.volumeFastInterval
+        volumeFast: Mapping.volumeFastInterval,
+        appFilter: AppFilter.defaults
     )
 
     /// Valid ranges, shared by the validator and the Settings sliders.
@@ -51,6 +53,16 @@ enum Config {
             if let x = obj["stickDeadzone"] as? Double { v.stickDeadzone = Float(x) }
             if let x = obj["volumeSlow"] as? Double { v.volumeSlow = x }
             if let x = obj["volumeFast"] as? Double { v.volumeFast = x }
+            if let f = obj["appFilter"] as? [String: Any] {
+                if let m = f["mode"] as? String {
+                    if let mode = AppFilter.Mode(rawValue: m) {
+                        v.appFilter.mode = mode
+                    } else {
+                        DebugLog.log("config: appFilter.mode '\(m)' unknown, using allowlist")
+                    }
+                }
+                if let a = f["apps"] as? [String] { v.appFilter.apps = a }
+            }
         }
         let (valid, warnings) = validate(v)
         warnings.forEach { DebugLog.log("config: \($0)") }
@@ -79,6 +91,10 @@ enum Config {
             v.volumeSlow = defaults.volumeSlow
             v.volumeFast = defaults.volumeFast
         }
+        v.appFilter = v.appFilter.cleaned()
+        if v.appFilter.mode == .allowlist && v.appFilter.apps.isEmpty {
+            warnings.append("appFilter allowlist is empty, so Couch will not act in any app")
+        }
         return (v, warnings)
     }
 
@@ -89,7 +105,8 @@ enum Config {
             "seekFast": v.seekFast,
             "stickDeadzone": Double(v.stickDeadzone),
             "volumeSlow": v.volumeSlow,
-            "volumeFast": v.volumeFast
+            "volumeFast": v.volumeFast,
+            "appFilter": ["mode": v.appFilter.mode.rawValue, "apps": v.appFilter.apps] as [String: Any]
         ]
         guard let data = try? JSONSerialization.data(
             withJSONObject: obj, options: [.prettyPrinted, .sortedKeys]) else { return }

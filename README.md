@@ -15,6 +15,7 @@ listens to media keys.
 
 [Controls](#-controls) ·
 [Settings window](#-settings-window) ·
+[App allowlist](#-app-allowlist) ·
 [Install](#-install) ·
 [Accessibility](#-first-run-accessibility) ·
 [Tuning](#-tuning-without-a-rebuild) ·
@@ -31,6 +32,8 @@ listens to media keys.
 - 🎚️ **Analog scrubbing.** Hold a trigger to seek. Press deeper to scrub faster.
 - 🫥 **Lives in the menu bar.** A filled icon means the pad is live. An optional
   [Settings window](#-settings-window) shows more.
+- 🛡️ **Stays out of your games.** Couch acts only in apps you allow (IINA, browsers
+  and more by default), so a game never receives its keys.
 - 🔌 **Reconnects by itself.** The pad sleeps when idle. Wake it with the Xbox
   button and Couch picks it back up.
 - 🚫 **No cursor control.** Keys and media keys only, by design.
@@ -76,7 +79,8 @@ The **Controller** tab of the [Settings window](#-settings-window) draws this li
 
 | Item | What it does |
 |---|---|
-| Controller line | Shows the connected pad, or "No controller" |
+| Controller line | Shows the connected pad, or "No controller". Adds "paused in <App>" when the [allowlist](#-app-allowlist) is blocking the app in front |
+| **Allow <App>** | Appears only when Couch is paused in the frontmost app. One click adds it to the allowlist |
 | **Remote** switch | Turns the whole pad on or off without quitting |
 | **Launch at Login** switch | Starts Couch when you log in |
 | Check Accessibility… | Re-prompts for the permission |
@@ -95,6 +99,23 @@ away when you close it. Nothing in it is required for Couch to work.
 | **General.** Remote and Launch at Login switches, Accessibility status with a fix button. | **Controller.** A drawn pad showing what every input does, lit up live as you press, plus battery and device details. |
 | ![Tuning](docs/screenshots/tuning.png) | ![Debug](docs/screenshots/debug.png) |
 | **Tuning.** Sliders for every setting with live preview bars. Applies instantly and saves to `config.json`. | **Debug.** Live event feed, log viewer, copyable diagnostics, and an action tester that fires each action without the pad. |
+
+## 🛡️ App allowlist
+
+Couch reads the pad even when another app is in front, and sends system-wide keys.
+To keep that out of your games, it **acts only while an allowed app is frontmost**
+and stays silent everywhere else. No permission is needed for this.
+
+![Apps](docs/screenshots/apps.png)
+
+- **Default list:** IINA, Safari, Chrome, Firefox, Arc, Brave, Edge, VLC, QuickTime
+  Player, Music, TV and Spotify.
+- **Add an app:** with it in front, choose **Allow <App>** in the Couch menu-bar menu,
+  or use **Settings → Apps** (*Add running app…*, *Add app…*, remove, reset to defaults).
+- **Everywhere mode:** the Apps tab can turn the filter off, which restores the old
+  behaviour. The **Remote** switch still turns everything off.
+- **Limits:** a video playing in an app that is *not* in front cannot be controlled.
+  Browser web apps (PWAs) have their own entry and must be added separately.
 
 ## 📦 Install
 
@@ -133,6 +154,7 @@ required.
 ```sh
 ./Scripts/build-app.sh        # builds and signs dist/Couch.app
 ./Scripts/build-app.sh run    # same, then launches it
+./Scripts/test.sh             # unit tests (works with Command Line Tools only)
 ./Scripts/grant-accessibility.sh   # opens the pane and reveals the app
 ```
 
@@ -203,15 +225,25 @@ state, pad attach and detach, and each input and action.
 </details>
 
 <details>
+<summary><b>Nothing happens in one particular app</b></summary>
+
+<br>
+
+Look at the controller line in the menu. If it says "paused in <App>", that app is
+not on the [allowlist](#-app-allowlist). Choose **Allow <App>** in the menu, or add
+it in Settings → Apps.
+
+</details>
+
+<details>
 <summary><b>Using Couch while gaming</b></summary>
 
 <br>
 
-Couch reads the pad even when another app is in front, and sends system-wide
-media keys, volume, brightness, `F` (fullscreen) and arrow keys (D-pad ◄ ►, left
-stick, triggers). A game would receive those too.
-Switch **Remote** off (menu, or Settings → General) before you play, and back
-on afterwards. The game's own pad support is not affected.
+With the default allowlist Couch stays silent in games, so there is nothing to do. If
+you set the mode to *Everywhere*, a game would receive Couch's media keys, volume,
+brightness, `F` and arrow keys. Switch **Remote** off before you play in that case.
+The game's own pad support is never affected.
 
 </details>
 
@@ -233,7 +265,8 @@ Sources/Couch/         menu-bar app (input, mapping, output, menu)
 Sources/Couch/Model/   observable state shared by menu and window
 Sources/Couch/UI/      SwiftUI Settings window
 Sources/pad-dump/      CLI that prints live pad state, for debugging
-Scripts/               build, signing, Accessibility helper, icon and screenshot generators
+Scripts/               build, test, signing, Accessibility helper, icon and screenshot generators
+Tests/CouchTests/      unit tests (app filter, config validation)
 docs/screenshots/      README images (regenerate with Scripts/make-screenshots.sh)
 Resources/             Info.plist, app icon
 PLAN.md · ADR.md       roadmap and decision records
