@@ -145,6 +145,9 @@ Final key choices are yours to tweak in code (single constant table).
 ### Phase 9 — App Allowlist (no input while gaming) — **DONE** (see §15, ADR-023)
 - Couch acts only when the frontmost app is on an allowlist.
 
+### Phase 10 — CI (GitHub Actions) — **IN PROGRESS** (see §16)
+- Build, test and package on every pull request and on pushes to `main`.
+
 ## 7. Permissions Required
 
 - **Accessibility** — required to post `CGEvent`s (output layer only).
@@ -175,9 +178,8 @@ Controller-mouse/
 
 ## 10. Next Step
 
-Phases 0–9 done. Next, in rough order: CI (a GitHub Actions build and test job;
-unit tests exist now, run with `Scripts/test.sh`), more tests, other pads (needs
-hardware), notarization (needs a paid Apple Developer ID).
+Phases 0–9 done; Phase 10 (CI, §16) in progress. After it, in rough order: more
+tests, other pads (needs hardware), notarization (needs a paid Apple Developer ID).
 Decided against: rebindable mapping (mapping stays fixed, ADR-004). Parked:
 cursor mode (ADR-002), a big scope change from "media remote".
 
@@ -620,3 +622,36 @@ a check.
 - Opt-in "media keys everywhere": default **not in this phase**.
 - Treat apps that declare the Games category as always blocked: default **no**
   (many games do not declare it; an allowlist already covers them).
+
+## 16. Next Update: CI (Phase 10)
+
+### Goal
+Catch a broken build or failing test before a PR is merged, without any cost or
+setup beyond the repo.
+
+### Design
+- One workflow, `.github/workflows/ci.yml`, on `pull_request` and pushes to
+  `main`. A newer push to the same ref cancels the older run.
+- Runner `macos-15` (Apple silicon, full Xcode). Free and unlimited for public
+  repos on a personal account; the repo is public.
+- Steps: print the toolchain, run `Scripts/test.sh` (plain `swift test` there),
+  run `Scripts/build-app.sh` (release build, package, ad-hoc sign), then check
+  the bundle (signature verifies, icon present, version printed).
+- No secrets, read-only token (`permissions: contents: read`), no artifacts
+  uploaded, no release automation. CI cannot use the local "Couch Local
+  Signing" identity, so it only verifies; releases are still built on the
+  maintainer's Mac (ADR-016).
+- README gets a CI status badge. Making the check required before merge is a
+  branch-protection setting on GitHub, left to the repo owner.
+
+### Risks
+- The runner has an older Swift/SDK than the dev machine (Swift 6.3, macOS 26
+  SDK), so something could compile locally and fail there. That is what the
+  first run is for: fix real incompatibilities, do not hide them.
+- Hardware-free by design: nothing here exercises the pad or Accessibility.
+
+### Test plan
+- The workflow goes green on its own PR; a deliberate failure (not committed)
+  turns it red.
+- `Scripts/test.sh` and `Scripts/build-app.sh` still work locally.
+

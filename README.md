@@ -12,6 +12,7 @@ listens to media keys.
 ![macOS 13+](https://img.shields.io/badge/macOS-13%2B-8e3a8e)
 ![Apple silicon](https://img.shields.io/badge/Apple%20silicon-arm64-555)
 ![Swift 5.9](https://img.shields.io/badge/Swift-5.9-f05138)
+[![CI](https://github.com/necromancerthedark/Couch/actions/workflows/ci.yml/badge.svg)](https://github.com/necromancerthedark/Couch/actions/workflows/ci.yml)
 
 [Controls](#-controls) ·
 [Settings window](#-settings-window) ·
