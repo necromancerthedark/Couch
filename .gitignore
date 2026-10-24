@@ -1,0 +1,6 @@
+.build/
+dist/
+.vscode/
+.DS_Store
+# stale session notes, local only
+HANDOVER.md
