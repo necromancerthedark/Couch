@@ -7,7 +7,6 @@ import ApplicationServices
 
 final class MediaController {
     var enabled = true
-    var onStateChange: ((Bool) -> Void)?
     var onControllerChange: ((String?) -> Void)?
 
     private let output = OutputLayer()
@@ -64,13 +63,17 @@ final class MediaController {
             }
         )
 
-        for c in GCController.controllers() { attach(c) }
+        ltSeek.onIdle = { [weak self] in self?.ltHeld = false }
+        rtSeek.onIdle = { [weak self] in self?.rtHeld = false }
+
+        if let first = GCController.controllers().first { attach(first) }
 
         observers = [
             NotificationCenter.default.addObserver(
                 forName: Notification.Name.GCControllerDidConnect, object: nil, queue: .main
             ) { [weak self] note in
-                if let c = note.object as? GCController { self?.attach(c) }
+                guard let self, let c = note.object as? GCController else { return }
+                if self.controller == nil { self.attach(c) }
             },
             NotificationCenter.default.addObserver(
                 forName: Notification.Name.GCControllerDidDisconnect, object: nil, queue: .main
@@ -100,9 +103,14 @@ final class MediaController {
 
     private func attach(_ c: GCController) {
         DebugLog.log("attach: vendorName='\(c.vendorName ?? "-")' productCategory='\(c.productCategory)' extendedGamepad=\(c.extendedGamepad != nil)")
+        // Not an extended gamepad: nothing we can map, so don't show it as live.
+        guard let gp = c.extendedGamepad else { return }
         controller = c
         onControllerChange?(c.vendorName?.trimmingCharacters(in: .whitespaces) ?? "Gamepad")
-        guard let gp = c.extendedGamepad else { return }
+        ltSeek.stop()
+        rtSeek.stop()
+        ltHeld = false
+        rtHeld = false
         // Prime the framework: read full state ONCE before setting the handler.
         // GameController only starts updating an input after its first access
         // (pad-dump did exactly this; without it valueChangedHandler never fires).
@@ -116,6 +124,7 @@ final class MediaController {
     private func detach(_ c: GCController) {
         if controller === c {
             DebugLog.log("detach: vendorName='\(c.vendorName ?? "-")'")
+            c.extendedGamepad?.valueChangedHandler = nil
             controller = nil
             ltSeek?.stop()
             rtSeek?.stop()
@@ -124,7 +133,9 @@ final class MediaController {
             prevState.removeAll()
             onControllerChange?(nil)
             // Another pad still connected? Take it over.
-            if let other = GCController.controllers().first(where: { $0 !== c }) { attach(other) }
+            if let other = GCController.controllers().first(where: { $0 !== c && $0.extendedGamepad != nil }) {
+                attach(other)
+            }
         }
     }
 
@@ -133,10 +144,13 @@ final class MediaController {
     private func handle(gp: GCExtendedGamepad) {
         logState(gp: gp)
         guard enabled else {
+            // Track state without acting, so a button held or released while
+            // off does not fire a bogus edge when Remote is switched back on.
             ltSeek.stop()
             rtSeek.stop()
-            ltHeld = false
-            rtHeld = false
+            ltHeld = gp.leftTrigger.value > triggerThreshold
+            rtHeld = gp.rightTrigger.value > triggerThreshold
+            for (id, _) in Mapping.edgeTable { prevState[id] = Mapping.value(id: id, gp: gp) }
             return
         }
         handleEdges(gp: gp)

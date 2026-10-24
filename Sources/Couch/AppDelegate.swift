@@ -66,10 +66,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         menu.delegate = self
         statusItem.menu = menu
 
-        media.onStateChange = { [weak self] on in
-            self?.updateUI(on: on)
-        }
-
         media.onControllerChange = { [weak self] name in
             self?.padConnected = name != nil
             self?.padItem.title = name.map { "Controller: \($0)" } ?? "No controller"

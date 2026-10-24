@@ -34,6 +34,21 @@ enum Config {
         if let x = obj["triggerThreshold"] as? Double { v.triggerThreshold = Float(x) }
         if let x = obj["seekSlow"] as? Double { v.seekSlow = x }
         if let x = obj["seekFast"] as? Double { v.seekFast = x }
+
+        // Reject nonsense: bad values would divide by zero or flood key events.
+        let d = Values(triggerThreshold: Mapping.triggerThreshold,
+                       seekSlow: Mapping.seekSlowInterval,
+                       seekFast: Mapping.seekFastInterval)
+        if !(0.01...0.95).contains(v.triggerThreshold) {
+            DebugLog.log("config: triggerThreshold \(v.triggerThreshold) out of 0.01...0.95, using default")
+            v.triggerThreshold = d.triggerThreshold
+        }
+        let ok = v.seekFast >= 0.02 && v.seekSlow <= 5 && v.seekFast <= v.seekSlow
+        if !ok {
+            DebugLog.log("config: seek intervals invalid (need 0.02 <= seekFast <= seekSlow <= 5), using defaults")
+            v.seekSlow = d.seekSlow
+            v.seekFast = d.seekFast
+        }
         return v
     }
 }

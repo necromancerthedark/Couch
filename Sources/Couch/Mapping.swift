@@ -74,10 +74,4 @@ enum Mapping {
     static let seekSlowInterval: TimeInterval = 0.50  // just above threshold
     static let seekFastInterval: TimeInterval = 0.08  // full press
 
-    // Interval between seek events for a given trigger value.
-    static func seekInterval(for value: Float) -> TimeInterval {
-        let t = triggerThreshold
-        let norm = min(1.0, max(0.0, (value - t) / (1.0 - t)))
-        return seekSlowInterval - Double(norm) * (seekSlowInterval - seekFastInterval)
-    }
 }

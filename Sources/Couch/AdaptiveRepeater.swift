@@ -14,6 +14,8 @@ final class AdaptiveRepeater {
     private let fast: TimeInterval
     private let read: () -> Float
     private let fire: () -> Void
+    /// Called when the repeater stops itself because the input dropped below threshold.
+    var onIdle: (() -> Void)?
 
     init(threshold: Float, slow: TimeInterval, fast: TimeInterval,
          read: @escaping () -> Float, fire: @escaping () -> Void) {
@@ -53,6 +55,7 @@ final class AdaptiveRepeater {
                 self.schedule(self.interval(for: v))
             } else {
                 self.timer = nil
+                self.onIdle?()
             }
         }
         RunLoop.main.add(newTimer, forMode: .common)

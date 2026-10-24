@@ -7,16 +7,14 @@ import Foundation
 
 final class OutputLayer {
 
-    // System "media key" virtual key codes (HID consumer page).
-    private enum MediaKey: UInt16 {
-        case playPause      = 0xF88B
-        case nextTrack      = 0xF88E
-        case prevTrack      = 0xF88F
-        case volumeUp       = 0xF887
-        case volumeDown     = 0xF888
-        case mute           = 0xF8A2
-        case brightnessUp   = 0xF8A0   // ADR-012
-        case brightnessDown = 0xF8A1   // ADR-012
+    // NX_KEYTYPE_* values for system-defined media key events (ADR-015).
+    private enum NXKey: Int {
+        case mute = 7
+        case brightnessUp = 2
+        case brightnessDown = 3
+        case play = 16
+        case next = 17
+        case previous = 18
     }
 
     // Regular keyboard codes (arrows) for seek / volume.
@@ -30,12 +28,12 @@ final class OutputLayer {
     func perform(_ action: MediaAction) {
         DebugLog.log("perform: \(action)")
         switch action {
-        case .playPause:       postSystemKey(16)   // NX_KEYTYPE_PLAY
-        case .next:            postSystemKey(17)       // NX_KEYTYPE_NEXT
-        case .prev:            postSystemKey(18)       // NX_KEYTYPE_PREVIOUS
-        case .mute:            postSystemKey(7)        // NX_KEYTYPE_MUTE
-        case .brightnessUp:    postSystemKey(2)     // NX_KEYTYPE_BRIGHTNESS_UP
-        case .brightnessDown:  postSystemKey(3)   // NX_KEYTYPE_BRIGHTNESS_DOWN
+        case .playPause:       postSystemKey(.play)
+        case .next:            postSystemKey(.next)
+        case .prev:            postSystemKey(.previous)
+        case .mute:            postSystemKey(.mute)
+        case .brightnessUp:    postSystemKey(.brightnessUp)
+        case .brightnessDown:  postSystemKey(.brightnessDown)
         case .volUp:           postKey(.up)
         case .volDown:         postKey(.down)
         case .seekBack:        postKey(.left)
@@ -43,14 +41,9 @@ final class OutputLayer {
         }
     }
 
-    // Media keys must be posted from the HID system state source.
-    private func postMedia(_ key: MediaKey) {
-        let src = CGEventSource(stateID: .hidSystemState)
-        post(code: key.rawValue, source: src)
-    }
-
     // Real HID media key: system-defined event (subtype 8), keyType in data1.
-    private func postSystemKey(_ keyType: Int) {
+    private func postSystemKey(_ key: NXKey) {
+        let keyType = key.rawValue
         for down in [true, false] {
             let flags = down ? 0xA00 : 0xB00
             let ev = NSEvent.otherEvent(
