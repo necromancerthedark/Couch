@@ -480,3 +480,38 @@ here (ADR-004 stands).
 - **Rebinding:** **decided: no.** Mapping stays fixed; the window only shows it.
 - **Window style:** **sidebar with tabs** (System Settings look). Confirmed.
 - **Dark mode and accent colour:** follow the system.
+
+## 14. Backlog (to discuss): Couch while gaming
+
+**Status:** noted, not planned. Decide the approach before any code.
+
+### Problem
+Couch receives pad input even when another app is frontmost
+(`shouldMonitorBackgroundEvents`, ADR-013) and posts system-wide key events.
+While a game is in front, a game and Couch both read the pad, and Couch also
+injects input into the game or the system:
+
+- A fires the system play/pause key (can start or pause Music or other media apps).
+- D-pad ▲/▼ change the Mac's volume; LB/RB change the screen brightness.
+- Y types `F`; the left stick and triggers send arrow keys into the game window.
+
+The game's own pad support is not broken. Only Couch's injected keys cause trouble.
+
+### Workaround today
+Switch **Remote** off (menu or Settings → General) before gaming, or quit Couch.
+
+### Options
+1. **Pause hotkey:** a pad chord (for example hold Menu plus one button) toggles
+   Remote. Small. Costs a free button combo and must not fire by accident.
+2. **App allowlist (leaning this way):** Couch acts only when the frontmost app
+   is on a list (IINA, browsers, and so on) and stays quiet otherwise. Most
+   reliable for gaming. Needs a settings list, a way to pick apps, and
+   handling for unexpected cases such as video in a browser tab you did not list.
+3. **Auto-pause for fullscreen non-listed apps:** least predictable, most magic.
+
+### Open questions
+- Allowlist or denylist (list the games instead)?
+- Should Remote's menu icon show "paused for <app>" so it is obvious why it is quiet?
+- Where does the list live: `config.json`, the Settings window, or both?
+- Should media keys (play/pause, volume) still work everywhere while seek and
+  fullscreen keys only work in listed apps?
