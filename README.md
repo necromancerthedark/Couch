@@ -13,9 +13,9 @@ listens to media keys.
 ![Apple silicon](https://img.shields.io/badge/Apple%20silicon-arm64-555)
 ![Swift 5.9](https://img.shields.io/badge/Swift-5.9-f05138)
 
-[Install](#-install) ·
 [Controls](#-controls) ·
 [Settings window](#-settings-window) ·
+[Install](#-install) ·
 [Accessibility](#-first-run-accessibility) ·
 [Tuning](#-tuning-without-a-rebuild) ·
 [Troubleshooting](#-troubleshooting)
@@ -29,7 +29,8 @@ listens to media keys.
 - 🎮 **Fixed, sensible mapping.** Play/pause, seek, volume, next/prev, mute,
   fullscreen, brightness. No setup, no rebind screen.
 - 🎚️ **Analog scrubbing.** Hold a trigger to seek. Press deeper to scrub faster.
-- 🫥 **Menu-bar only.** No Dock icon. A filled icon means the pad is live.
+- 🫥 **Lives in the menu bar.** A filled icon means the pad is live. An optional
+  [Settings window](#-settings-window) shows more.
 - 🔌 **Reconnects by itself.** The pad sleeps when idle. Wake it with the Xbox
   button and Couch picks it back up.
 - 🚫 **No cursor control.** Keys and media keys only, by design.
@@ -40,19 +41,7 @@ an extended gamepad should work too.
 
 ## 🎮 Controls
 
-```
-   ┌──────── LT ────────┐          ┌──────── RT ────────┐
-   │ scrub back         │          │ scrub forward      │
-   ├──────── LB ────────┤          ├──────── RB ────────┤
-   │ brightness down    │          │ brightness up      │
-   └────────────────────┘          └────────────────────┘
-
-   D-pad:  ▲ system volume up                ( Y )  fullscreen
-           ◄ seek   seek ►     [Menu] mute    ( X )  previous    ( B )  next
-           ▼ system volume down                ( A )  play / pause
-
-   Left stick:  ▲ player volume up   ▼ player volume down
-```
+The **Controller** tab of the [Settings window](#-settings-window) draws this on a pad.
 
 | Pad input | Action | Sent as |
 |---|---|---|
@@ -94,11 +83,9 @@ away when you close it. Nothing in it is required for Couch to work.
 | ![Tuning](docs/screenshots/tuning.png) | ![Debug](docs/screenshots/debug.png) |
 | **Tuning.** Sliders for every setting with live preview bars. Applies instantly and saves to `config.json`. | **Debug.** Live event feed, log viewer, copyable diagnostics, and an action tester that fires each action without the pad. |
 
-The mapping is fixed. The Controller tab shows it but does not change it.
-
 ## 📦 Install
 
-1. Download `Couch-v0.x.zip` from the
+1. Download the zip from the
    [latest release](https://github.com/necromancerthedark/Couch/releases/latest)
    and unzip it.
 2. Move `Couch.app` to `/Applications`.
@@ -110,7 +97,7 @@ The mapping is fixed. The Controller tab shows it but does not change it.
    xattr -dr com.apple.quarantine /Applications/Couch.app
    ```
 
-4. Grant Accessibility (next section).
+4. [Grant Accessibility](#-first-run-accessibility).
 
 Apple silicon only (arm64).
 
@@ -160,6 +147,9 @@ Use the **Tuning** tab, or edit `~/Library/Application Support/Couch/config.json
   "stickDeadzone": 0.30, "volumeSlow": 0.30, "volumeFast": 0.08 }
 ```
 
+<details>
+<summary><b>All config keys</b></summary>
+
 | Key | Meaning | Allowed |
 |---|---|---|
 | `triggerThreshold` | How far a trigger must be pressed to count | 0.01 – 0.95 |
@@ -168,6 +158,8 @@ Use the **Tuning** tab, or edit `~/Library/Application Support/Couch/config.json
 | `stickDeadzone` | How far the left stick must be pushed to change volume | 0.1 – 0.9 |
 | `volumeSlow` | Seconds between volume steps just past the deadzone | `volumeFast` – 5 |
 | `volumeFast` | Seconds between volume steps at a full push | 0.02 – `volumeSlow` |
+
+</details>
 
 Invalid values are logged and replaced by the defaults.
 
@@ -180,8 +172,8 @@ Invalid values are logged and replaced by the defaults.
 
 - Check the menu: the controller line should name your pad, and **Remote**
   should be on.
-- Check **Accessibility**: the log line `accessibility: trusted=true` must be
-  there. If it says `false`, redo the grant and relaunch.
+- Check **Accessibility** (Settings → General shows a green check when granted).
+  If not, [redo the grant](#-first-run-accessibility) and relaunch.
 - The pad sleeps after about 5 minutes idle. Press the Xbox button to wake it.
 
 </details>
@@ -191,9 +183,21 @@ Invalid values are logged and replaced by the defaults.
 
 <br>
 
-In the Settings window: **Debug → Log**. On disk: `~/Library/Logs/Couch.log`. It is reset at each launch, capped at 1 MB, and
-records the Accessibility state, pad attach and detach, and each input and
-action.
+In the Settings window: **Debug → Log**. On disk: `~/Library/Logs/Couch.log`.
+It is reset at each launch, capped at 1 MB, and records the Accessibility
+state, pad attach and detach, and each input and action.
+
+</details>
+
+<details>
+<summary><b>Using Couch while gaming</b></summary>
+
+<br>
+
+Couch reads the pad even when another app is in front, and sends system-wide
+media keys, volume, brightness and arrow keys. A game would receive those too.
+Switch **Remote** off (menu, or Settings → General) before you play, and back
+on afterwards. The game's own pad support is not affected.
 
 </details>
 
@@ -211,14 +215,14 @@ never frontmost, so Couch sets `GCController.shouldMonitorBackgroundEvents`
 ## 📁 Project layout
 
 ```
-Sources/Couch/      menu-bar app (input, mapping, output, menu)
-Sources/Couch/Model/ observable state shared by menu and window
-Sources/Couch/UI/    SwiftUI Settings window
-Sources/pad-dump/   CLI that prints live pad state, for debugging
-Scripts/            build, signing, Accessibility helper, icon and screenshot generators
-docs/screenshots/  README images (regenerate with Scripts/make-screenshots.sh)
-Resources/          Info.plist, app icon
-PLAN.md · ADR.md    roadmap and decision records
+Sources/Couch/         menu-bar app (input, mapping, output, menu)
+Sources/Couch/Model/   observable state shared by menu and window
+Sources/Couch/UI/      SwiftUI Settings window
+Sources/pad-dump/      CLI that prints live pad state, for debugging
+Scripts/               build, signing, Accessibility helper, icon and screenshot generators
+docs/screenshots/      README images (regenerate with Scripts/make-screenshots.sh)
+Resources/             Info.plist, app icon
+PLAN.md · ADR.md       roadmap and decision records
 ```
 
 ---
