@@ -41,7 +41,20 @@ an extended gamepad should work too.
 
 ## 🎮 Controls
 
-The **Controller** tab of the [Settings window](#-settings-window) draws this on a pad.
+```
+   LT  scrub back                                 RT  scrub forward
+   LB  brightness −                               RB  brightness +
+   ╭────────────────────────────────────────────────────────────────╮
+   │  Left stick ▲▼  player volume             (Y) fullscreen       │
+   │                                 [Menu]                         │
+   │  D-pad ▲  system vol +           mute    (X) previous  (B) next│
+   │        ◄  seek back   seek ►               (A) play / pause    │
+   │        ▼  system vol −                                         │
+   │                          Right stick: unmapped                 │
+   ╰────────────────────────────────────────────────────────────────╯
+```
+
+The **Controller** tab of the [Settings window](#-settings-window) draws this live.
 
 | Pad input | Action | Sent as |
 |---|---|---|
@@ -85,7 +98,7 @@ away when you close it. Nothing in it is required for Couch to work.
 
 ## 📦 Install
 
-1. Download the zip from the
+1. Download `Couch-v<version>.zip` (not the "Source code" archives) from the
    [latest release](https://github.com/necromancerthedark/Couch/releases/latest)
    and unzip it.
 2. Move `Couch.app` to `/Applications`.
@@ -195,7 +208,8 @@ state, pad attach and detach, and each input and action.
 <br>
 
 Couch reads the pad even when another app is in front, and sends system-wide
-media keys, volume, brightness and arrow keys. A game would receive those too.
+media keys, volume, brightness, `F` (fullscreen) and arrow keys (D-pad ◄ ►, left
+stick, triggers). A game would receive those too.
 Switch **Remote** off (menu, or Settings → General) before you play, and back
 on afterwards. The game's own pad support is not affected.
 

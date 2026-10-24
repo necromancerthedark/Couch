@@ -493,7 +493,7 @@ injects input into the game or the system:
 
 - A fires the system play/pause key (can start or pause Music or other media apps).
 - D-pad ▲/▼ change the Mac's volume; LB/RB change the screen brightness.
-- Y types `F`; the left stick and triggers send arrow keys into the game window.
+- Y types `F`; D-pad ◄ ►, the left stick and the triggers send arrow keys into the game window.
 
 The game's own pad support is not broken. Only Couch's injected keys cause trouble.
 
