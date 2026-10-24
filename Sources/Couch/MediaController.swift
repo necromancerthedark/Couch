@@ -8,6 +8,7 @@ import ApplicationServices
 final class MediaController {
     var enabled = true
     var onStateChange: ((Bool) -> Void)?
+    var onControllerChange: ((String?) -> Void)?
 
     private let output = OutputLayer()
     private var controller: GCController?
@@ -100,6 +101,7 @@ final class MediaController {
     private func attach(_ c: GCController) {
         DebugLog.log("attach: vendorName='\(c.vendorName ?? "-")' productCategory='\(c.productCategory)' extendedGamepad=\(c.extendedGamepad != nil)")
         controller = c
+        onControllerChange?(c.vendorName?.trimmingCharacters(in: .whitespaces) ?? "Gamepad")
         guard let gp = c.extendedGamepad else { return }
         // Prime the framework: read full state ONCE before setting the handler.
         // GameController only starts updating an input after its first access
@@ -120,6 +122,9 @@ final class MediaController {
             ltHeld = false
             rtHeld = false
             prevState.removeAll()
+            onControllerChange?(nil)
+            // Another pad still connected? Take it over.
+            if let other = GCController.controllers().first(where: { $0 !== c }) { attach(other) }
         }
     }
 

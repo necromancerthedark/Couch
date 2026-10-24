@@ -103,25 +103,28 @@ Final key choices are yours to tweak in code (single constant table).
   - Zero permission prompt to read.
 - No workarounds needed. Proceed to Phase 1.
 
-### Phase 1 — Input Layer
+### Phase 1 — Input Layer — **DONE**
 - Menu-bar app skeleton.
 - GameController observation (connect/disconnect), read `GCExtendedGamepad`.
 - Normalize: deadzone on sticks, edge detection on buttons (press vs hold).
 - Handle multiple pads, reconnect.
 
-### Phase 2 — Output Layer
+### Phase 2 — Output Layer — **DONE** (NX media keys, ADR-015)
 - Post media keys + keyboard events via `CGEvent`.
 - Prompt for / gate on Accessibility at first run.
 
-### Phase 3 — Mapping (Fixed Preset)
+### Phase 3 — Mapping (Fixed Preset) — **DONE**
 - Encode the §5 preset as a constant table (input → action).
 - Wire input edges → actions → output.
 - Persist any user tweaks (speed/deadzone) to prefs.
 
-### Phase 4 — Menu-bar Shell + Polish
+### Phase 4 — Menu-bar Shell + Polish — **DONE**
 - Menu: enable/disable, quit, "check permissions", about.
 - Launch at login, app icon, Accessibility onboarding.
 - Edge cases: no focused window, full-screen player, pad disconnect.
+- Done: enable/disable, quit, Accessibility check, About, Launch at Login
+  (`SMAppService`), controller status line, filled/outline menu-bar icon,
+  fall back to another pad on disconnect. App icon: `Scripts/make-icon.swift` → `Resources/AppIcon.icns`.
 
 ### Phase 5 — Distribution (local)
 - Ad-hoc signed `.app` bundle; helper script to grant Accessibility; README.
@@ -156,7 +159,6 @@ Controller-mouse/
 
 ## 10. Next Step
 
-Pad confirmed readable. **Scaffold the menu-bar app (Phase 1–3):**
-GameController input layer → fixed mapping → `CGEvent` output (media keys +
-arrows), with Accessibility onboarding. Key remaining choice: the exact §5
-preset (or tweaks). Then build + test against IINA and YouTube.
+Phases 0–4 done. Remaining: Phase 5 polish (helper
+script for the Accessibility grant, optional self-signed cert to stop
+re-granting on every rebuild).
