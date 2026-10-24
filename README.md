@@ -112,7 +112,7 @@ away when you close it. Nothing in it is required for Couch to work.
 
 4. [Grant Accessibility](#-first-run-accessibility).
 
-Apple silicon only (arm64).
+Apple silicon only (arm64). See the [changelog](CHANGELOG.md) for what changed in each version.
 
 ## 🔐 First run: Accessibility
 
@@ -237,6 +237,7 @@ Scripts/               build, signing, Accessibility helper, icon and screenshot
 docs/screenshots/      README images (regenerate with Scripts/make-screenshots.sh)
 Resources/             Info.plist, app icon
 PLAN.md · ADR.md       roadmap and decision records
+CHANGELOG.md           what changed in each release
 ```
 
 ---
