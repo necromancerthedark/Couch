@@ -126,8 +126,8 @@ Final key choices are yours to tweak in code (single constant table).
   (`SMAppService`), controller status line, filled/outline menu-bar icon,
   fall back to another pad on disconnect. App icon: `Scripts/make-icon.swift` → `Resources/AppIcon.icns`.
 
-### Phase 5 — Distribution (local)
-- Ad-hoc signed `.app` bundle; helper script to grant Accessibility; README.
+### Phase 5 — Distribution (local) — **DONE**
+- Signed `.app` bundle (stable local identity, ADR-016), `grant-accessibility.sh`, README.
 
 ## 7. Permissions Required
 
@@ -159,6 +159,4 @@ Controller-mouse/
 
 ## 10. Next Step
 
-Phases 0–4 done. Remaining: Phase 5 polish (helper
-script for the Accessibility grant, optional self-signed cert to stop
-re-granting on every rebuild).
+All phases done. Possible extras: rebindable mapping, cursor mode (ADR-002).

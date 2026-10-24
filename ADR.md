@@ -199,6 +199,17 @@ unless noted.
   Types: play 16, next 17, prev 18, mute 7, brightness up 2 / down 3.
 - **Consequences:** Verified by hand: A/B/X/Menu/LB/RB all work in a player.
 
+## ADR-016 — Stable local signing identity
+
+- **Status:** Accepted (refines ADR-007)
+- **Context:** Ad-hoc signatures change every build, so TCC dropped the
+  Accessibility grant after each rebuild.
+- **Decision:** `Scripts/setup-signing.sh` creates a self-signed code-signing
+  certificate ("Couch Local Signing") in the login keychain, trusted for code
+  signing only. `build-app.sh` signs with it when present, else ad-hoc.
+- **Consequences:** Verified: grant survived a rebuild. One extra grant after
+  switching identity. The key stays in the user's keychain.
+
 ---
 
 ## Phase status
@@ -210,4 +221,4 @@ unless noted.
 | 2 | Output layer (CGEvent) | ✅ Done, media keys posting |
 | 3 | Fixed mapping | ✅ Done |
 | 4 | Menu-bar shell + polish | ✅ Dist app verified end to end |
-| 5 | Local distribution | ⏳ |
+| 5 | Local distribution | ✅ Done (README, signing identity, grant helper) |

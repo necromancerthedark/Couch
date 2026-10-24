@@ -29,8 +29,16 @@ cp Resources/Info.plist "$APP/Contents/Info.plist"
 cp Resources/AppIcon.icns "$APP/Contents/Resources/AppIcon.icns"
 printf 'APPL????' > "$APP/Contents/PkgInfo"
 
-echo "==> Ad-hoc signing..."
-codesign --force --sign - "$APP"
+# Prefer the stable local identity (Scripts/setup-signing.sh): the Accessibility
+# grant then survives rebuilds. Fall back to ad-hoc (grant resets each build).
+IDENTITY="Couch Local Signing"
+if security find-identity -p codesigning | grep -q "$IDENTITY"; then
+  echo "==> Signing with '$IDENTITY'..."
+  codesign --force --sign "$IDENTITY" "$APP"
+else
+  echo "==> Ad-hoc signing (run Scripts/setup-signing.sh to keep the Accessibility grant across builds)..."
+  codesign --force --sign - "$APP"
+fi
 
 echo "==> Done: $APP"
 

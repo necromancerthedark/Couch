@@ -43,9 +43,22 @@ Posting key events needs Accessibility permission. Reading the pad does not.
 2. Add `dist/Couch.app` and turn it on.
 3. Quit and relaunch Couch. A process started before the grant does not get it.
 
-The app is ad-hoc signed, so **every rebuild of `dist/` invalidates the grant**.
-Delete all Couch entries in the list, re-add the new build, and relaunch.
-Building only with `swift build` does not touch the `dist/` signature.
+Run `./Scripts/grant-accessibility.sh` to open the pane and reveal the app.
+
+### Keep the grant across rebuilds
+
+An ad-hoc signature changes on every build, which drops the grant. Run this
+once to create a local self-signed identity ("Couch Local Signing") in your
+login keychain:
+
+```sh
+./Scripts/setup-signing.sh    # asks for your password once
+```
+
+`build-app.sh` then signs with it automatically and the grant survives
+rebuilds. Grant Accessibility once more after the first build with the new
+identity. Without the identity, builds fall back to ad-hoc and you must
+re-grant after each one. Remove the certificate later in Keychain Access.
 
 ## Tuning without a rebuild
 
@@ -72,7 +85,7 @@ Accessibility state, controller attach and detach, and each input and action.
 ```
 Sources/Couch/     menu-bar app (input, mapping, output)
 Sources/pad-dump/  CLI that prints live pad state, for debugging
-Scripts/           build-app.sh
+Scripts/           build-app.sh, setup-signing.sh, grant-accessibility.sh, make-icon.swift
 Resources/         Info.plist
 PLAN.md, ADR.md    roadmap and decision records
 ```
