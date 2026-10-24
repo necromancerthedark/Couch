@@ -116,16 +116,14 @@ struct ControllerDiagram: View {
             caption(functions ? "Right stick: unmapped" : "Right stick",
                     x: 395, y: 274, width: 150)
         }
-        .frame(width: 640, height: 296)
+        .frame(width: 640, height: 300)
     }
 
     // MARK: Pieces
 
     private var silhouette: some View {
         ZStack {
-            Ellipse().frame(width: 150, height: 130).position(x: 165, y: 230)
-            Ellipse().frame(width: 150, height: 130).position(x: 475, y: 230)
-            RoundedRectangle(cornerRadius: 90).frame(width: 440, height: 190).position(x: 320, y: 175)
+            RoundedRectangle(cornerRadius: 90).frame(width: 440, height: 210).position(x: 320, y: 185)
         }
         .foregroundStyle(.primary)
         .compositingGroup()
