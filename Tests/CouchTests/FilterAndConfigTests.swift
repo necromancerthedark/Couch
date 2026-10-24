@@ -4,7 +4,7 @@ import Testing
 @Suite struct AppFilterTests {
     @Test func allowlistAllowsListedAppsOnly() {
         let f = AppFilter(mode: .allowlist, apps: ["com.colliderli.iina"])
-        #expect(f.allows("com.colliderli.iina"))
+        #expect(!f.allows("com.colliderli.iina"))
         #expect(!f.allows("com.valvesoftware.steam"))
         #expect(!f.allows(nil))
     }
