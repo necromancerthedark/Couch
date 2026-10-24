@@ -3,11 +3,11 @@
 import AppKit
 import ServiceManagement
 
-final class AppDelegate: NSObject, NSApplicationDelegate {
+final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private var statusItem: NSStatusItem!
-    private var enabledItem: NSMenuItem!
     private var padItem: NSMenuItem!
-    private var loginItem: NSMenuItem!
+    private var remoteRow: ToggleMenuItemView!
+    private var loginRow: ToggleMenuItemView!
     private var padConnected = false
     private let media = MediaController()
 
@@ -26,22 +26,30 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         padItem = NSMenuItem(title: "No controller", action: nil, keyEquivalent: "")
         padItem.isEnabled = false
         menu.addItem(padItem)
-        enabledItem = NSMenuItem(title: "Remote: ON",
-                                 action: #selector(toggleEnabled), keyEquivalent: "")
-        enabledItem.target = self
-        menu.addItem(enabledItem)
+        menu.addItem(.separator())
+
+        remoteRow = ToggleMenuItemView(title: "Remote", isOn: media.enabled) { [weak self] on in
+            guard let self else { return }
+            self.media.enabled = on
+            self.updateUI(on: on)
+        }
+        let remoteItem = NSMenuItem()
+        remoteItem.view = remoteRow
+        menu.addItem(remoteItem)
+
+        loginRow = ToggleMenuItemView(title: "Launch at Login",
+                                      isOn: SMAppService.mainApp.status == .enabled) { [weak self] on in
+            self?.setLaunchAtLogin(on)
+        }
+        let loginItem = NSMenuItem()
+        loginItem.view = loginRow
+        menu.addItem(loginItem)
         menu.addItem(.separator())
 
         let checkItem = NSMenuItem(title: "Check Accessibility…",
                                    action: #selector(checkPermissions), keyEquivalent: "")
         checkItem.target = self
         menu.addItem(checkItem)
-
-        loginItem = NSMenuItem(title: "Launch at Login",
-                               action: #selector(toggleLogin), keyEquivalent: "")
-        loginItem.target = self
-        loginItem.state = SMAppService.mainApp.status == .enabled ? .on : .off
-        menu.addItem(loginItem)
 
         let aboutItem = NSMenuItem(title: "About Couch",
                                    action: #selector(showAbout), keyEquivalent: "")
@@ -55,6 +63,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         quitItem.target = self
         menu.addItem(quitItem)
 
+        menu.delegate = self
         statusItem.menu = menu
 
         media.onStateChange = { [weak self] on in
@@ -74,7 +83,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private func updateUI(on: Bool) {
-        enabledItem.title = on ? "Remote: ON" : "Remote: OFF"
+        remoteRow.isOn = on
         // Filled icon = live; outline = remote off or no pad.
         let live = on && padConnected
         statusItem.button?.image = NSImage(
@@ -85,31 +94,49 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             : "Couch — media remote (off)"
     }
 
-    @objc private func toggleEnabled() {
-        media.enabled.toggle()
-        updateUI(on: media.enabled)
+    // Re-read both states so changes made elsewhere (Login Items) show up.
+    func menuWillOpen(_ menu: NSMenu) {
+        remoteRow.isOn = media.enabled
+        loginRow.isOn = SMAppService.mainApp.status == .enabled
     }
 
     @objc private func checkPermissions() {
         media.ensureAccessibility(prompt: true)
     }
 
-    @objc private func toggleLogin() {
+    private func setLaunchAtLogin(_ on: Bool) {
         let svc = SMAppService.mainApp
         do {
-            if svc.status == .enabled { try svc.unregister() } else { try svc.register() }
+            if on { try svc.register() } else { try svc.unregister() }
         } catch {
             DebugLog.log("login item: \(error)")
         }
-        loginItem.state = svc.status == .enabled ? .on : .off
+        // Snap the switch to the real state if the change failed.
+        loginRow.isOn = svc.status == .enabled
     }
 
     @objc private func showAbout() {
         NSApp.activate(ignoringOtherApps: true)
         NSApp.orderFrontStandardAboutPanel(options: [
             .applicationName: "Couch",
-            .credits: NSAttributedString(string: "Gamepad media remote for macOS.")
+            .credits: aboutCredits()
         ])
+    }
+
+    private func aboutCredits() -> NSAttributedString {
+        let center = NSMutableParagraphStyle()
+        center.alignment = .center
+        let base: [NSAttributedString.Key: Any] = [
+            .paragraphStyle: center,
+            .font: NSFont.systemFont(ofSize: 11),
+            .foregroundColor: NSColor.labelColor
+        ]
+        let text = NSMutableAttributedString(
+            string: "Gamepad media remote for macOS.\nby Kumar Gaurav Pandey\n", attributes: base)
+        var link = base
+        link[.link] = URL(string: "https://github.com/necromancerthedark")!
+        text.append(NSAttributedString(string: "github.com/necromancerthedark", attributes: link))
+        return text
     }
 
     @objc private func quit() {

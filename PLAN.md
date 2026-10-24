@@ -129,6 +129,10 @@ Final key choices are yours to tweak in code (single constant table).
 ### Phase 5 — Distribution (local) — **DONE**
 - Signed `.app` bundle (stable local identity, ADR-016), `grant-accessibility.sh`, README.
 
+### Phase 6 — Menu Toggle Switches — **DONE** (see §11, ADR-017)
+- Replace "Remote: ON/OFF" text and the "Launch at Login" checkmark with real
+  toggle switches.
+
 ## 7. Permissions Required
 
 - **Accessibility** — required to post `CGEvent`s (output layer only).
@@ -160,3 +164,84 @@ Controller-mouse/
 ## 10. Next Step
 
 All phases done. Possible extras: rebindable mapping, cursor mode (ADR-002).
+
+## 11. Next Update: Menu Toggle Switches (Phase 6)
+
+### Goal
+The menu shows two on/off settings as **toggle switches** (`NSSwitch`) instead
+of text ("Remote: ON/OFF") or a checkmark ("Launch at Login").
+
+### Target menu
+```
+Controller: Xbox Bluetooth Gamepad     (disabled label, unchanged)
+────────────────────────────
+Remote                       [ ●━ ]    switch
+Launch at Login              [ ●━ ]    switch
+────────────────────────────
+Check Accessibility…
+About Couch
+────────────────────────────
+Quit
+```
+Label on the left, switch right-aligned. Title stays "Remote" (state is shown
+by the switch, not by the words ON/OFF).
+
+### Design
+- **Control:** `NSSwitch` (macOS 10.15+, project targets 13). Fits native
+  look, adapts to light/dark and accent colour.
+- **Menu integration:** `NSMenuItem.view` = a small container `NSView`
+  (`NSTextField` label + `NSSwitch`, Auto Layout, width matches the menu).
+  New file `ToggleMenuItem.swift` holds a reusable `ToggleMenuItemView`
+  (title, initial state, `onChange: (Bool) -> Void`) so both rows share one
+  implementation.
+- **Menu stays open** after a click (custom-view behaviour): the switch moves
+  and the effect applies immediately. This is the intended behaviour.
+- **Remote switch:** `onChange` sets `media.enabled`, then `updateUI`
+  (menu-bar icon filled/outline, tooltip). Same logic as `toggleEnabled`
+  today, which goes away.
+- **Launch at Login switch:** `onChange` calls `SMAppService.register()` /
+  `unregister()`. If it throws, log the error and **snap the switch back** to
+  the real `SMAppService.mainApp.status`, so the UI never lies.
+- **State sync:** make `AppDelegate` an `NSMenuDelegate`. In
+  `menuWillOpen`, re-read both states (`media.enabled`,
+  `SMAppService.mainApp.status == .enabled`) and set the switches. Covers
+  changes made elsewhere (System Settings → Login Items).
+- **Accessibility (VoiceOver):** set the switch's accessibility label to the
+  row title. Row click on the label also toggles (add a click gesture), so the
+  hit area is the full row, not just the small switch.
+- **Unchanged:** controller line, Check Accessibility, About, Quit (normal
+  items, normal highlight and keyboard behaviour).
+
+### Tradeoffs and risks
+- Custom-view menu items lose the standard hover highlight and arrow-key
+  navigation for those two rows. Acceptable: both are mouse-driven settings.
+  Mitigation: full-row click target.
+- Row width must be set manually or the switch floats oddly. Mitigation:
+  fixed width (about 220 pt) plus Auto Layout insets matching standard menu
+  padding.
+- `NSSwitch` tint follows the system accent colour, which may differ from
+  the app's coral icon. Accepted (native look wins).
+- No change to input, output, signing or the Accessibility grant, so the
+  grant survives the rebuild (stable signing identity, ADR-016).
+
+### Implementation steps
+1. Add `Sources/Couch/ToggleMenuItem.swift` (`ToggleMenuItemView`).
+2. In `AppDelegate`: build two toggle items, wire `onChange` handlers, remove
+   `toggleEnabled` / `toggleLogin` selectors and the text/checkmark updates.
+3. Adopt `NSMenuDelegate`, refresh switch states in `menuWillOpen`.
+4. Keep `updateUI` for the icon and tooltip, drop the title mutation.
+5. Add ADR-017 (toggle switches via custom menu item views).
+6. Update README mapping/menu notes if they mention ON/OFF.
+
+### Test plan
+- Remote switch off: pad presses do nothing, icon turns outline. On: controls
+  work again. Menu stays open throughout.
+- Launch at Login on, then check System Settings → Login Items shows Couch.
+  Turn it off there, reopen the Couch menu, switch reads off.
+- Force a register failure (log the error): switch snaps back.
+- Light and dark appearance, VoiceOver reads "Remote, switch, on/off".
+- Rebuild with the stable identity; Accessibility stays `trusted=true`.
+
+### Open questions (defaults chosen)
+- Row title "Remote" vs "Remote enabled": default **"Remote"**.
+- Close the menu after toggling: default **stay open**.

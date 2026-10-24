@@ -210,6 +210,21 @@ unless noted.
 - **Consequences:** Verified: grant survived a rebuild. One extra grant after
   switching identity. The key stays in the user's keychain.
 
+## ADR-017 — Toggle switches via custom menu item views
+
+- **Status:** Accepted
+- **Context:** "Remote: ON/OFF" text and a checkmark for Launch at Login read
+  poorly as settings.
+- **Decision:** `ToggleMenuItemView` (label + custom `PillSwitch`) set as
+  `NSMenuItem.view`. `AppDelegate` is an `NSMenuDelegate` and rereads both
+  states in `menuWillOpen`. A failed login-item change snaps the switch back to
+  the real `SMAppService` status.
+  `NSSwitch` is not used: menu windows are never key, so it always draws
+  grey. `PillSwitch` draws the system accent colour itself.
+- **Consequences:** Menu stays open after a toggle. Those two rows lose the
+  standard hover highlight and arrow-key navigation; the whole row is
+  clickable instead.
+
 ---
 
 ## Phase status
@@ -222,3 +237,4 @@ unless noted.
 | 3 | Fixed mapping | ✅ Done |
 | 4 | Menu-bar shell + polish | ✅ Dist app verified end to end |
 | 5 | Local distribution | ✅ Done (README, signing identity, grant helper) |
+| 6 | Menu toggle switches | ✅ Done (ADR-017) |
