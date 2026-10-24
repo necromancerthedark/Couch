@@ -15,6 +15,7 @@ listens to media keys.
 
 [Install](#-install) ·
 [Controls](#-controls) ·
+[Settings window](#-settings-window) ·
 [Accessibility](#-first-run-accessibility) ·
 [Tuning](#-tuning-without-a-rebuild) ·
 [Troubleshooting](#-troubleshooting)
@@ -77,7 +78,23 @@ an extended gamepad should work too.
 | **Remote** switch | Turns the whole pad on or off without quitting |
 | **Launch at Login** switch | Starts Couch when you log in |
 | Check Accessibility… | Re-prompts for the permission |
+| **Settings…** (⌘,) | Opens the Settings window |
 | About Couch | Version and credits |
+
+## 🪟 Settings window
+
+The menu bar stays the main interface. **Settings…** opens a companion window
+for the things a menu cannot show. A Dock icon appears while it is open and goes
+away when you close it. Nothing in it is required for Couch to work.
+
+| | |
+|---|---|
+| ![General](docs/screenshots/general.png) | ![Controller](docs/screenshots/controller.png) |
+| **General.** Remote and Launch at Login switches, Accessibility status with a fix button. | **Controller.** A drawn pad showing what every input does, lit up live as you press, plus battery and device details. |
+| ![Tuning](docs/screenshots/tuning.png) | ![Debug](docs/screenshots/debug.png) |
+| **Tuning.** Sliders for every setting with live preview bars. Applies instantly and saves to `config.json`. | **Debug.** Live event feed, log viewer, copyable diagnostics, and an action tester that fires each action without the pad. |
+
+The mapping is fixed. The Controller tab shows it but does not change it.
 
 ## 📦 Install
 
@@ -136,7 +153,7 @@ each one. Remove the certificate later in Keychain Access.
 
 ## 🔧 Tuning without a rebuild
 
-Optional file `~/Library/Application Support/Couch/config.json`:
+Use the **Tuning** tab, or edit `~/Library/Application Support/Couch/config.json` by hand (the window re-reads it when opened):
 
 ```json
 { "triggerThreshold": 0.15, "seekSlow": 0.5, "seekFast": 0.08,
@@ -174,7 +191,7 @@ Invalid values are logged and replaced by the defaults.
 
 <br>
 
-`~/Library/Logs/Couch.log`. It is reset at each launch, capped at 1 MB, and
+In the Settings window: **Debug → Log**. On disk: `~/Library/Logs/Couch.log`. It is reset at each launch, capped at 1 MB, and
 records the Accessibility state, pad attach and detach, and each input and
 action.
 
@@ -195,8 +212,11 @@ never frontmost, so Couch sets `GCController.shouldMonitorBackgroundEvents`
 
 ```
 Sources/Couch/      menu-bar app (input, mapping, output, menu)
+Sources/Couch/Model/ observable state shared by menu and window
+Sources/Couch/UI/    SwiftUI Settings window
 Sources/pad-dump/   CLI that prints live pad state, for debugging
-Scripts/            build, signing, Accessibility helper, icon generator
+Scripts/            build, signing, Accessibility helper, icon and screenshot generators
+docs/screenshots/  README images (regenerate with Scripts/make-screenshots.sh)
 Resources/          Info.plist, app icon
 PLAN.md · ADR.md    roadmap and decision records
 ```

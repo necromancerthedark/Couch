@@ -16,6 +16,9 @@ enum DebugLog {
         return dir.appendingPathComponent("Couch.log")
     }()
 
+    /// Mirror of every log line, for the Settings window's live event feed.
+    static var sink: ((String) -> Void)?
+
     private static let queue = DispatchQueue(label: "couch.debuglog")
     private static var handle: FileHandle?
 
@@ -40,6 +43,9 @@ enum DebugLog {
     static func log(_ message: String) {
         let line = "\(Date()) \(message)\n"
         guard let data = line.data(using: .utf8) else { return }
+        if let sink {
+            if Thread.isMainThread { sink(message) } else { DispatchQueue.main.async { sink(message) } }
+        }
         queue.sync {
             guard let fh = open() else { return }
             let end = (try? fh.seekToEnd()) ?? 0

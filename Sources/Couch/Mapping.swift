@@ -4,14 +4,14 @@
 import GameController
 
 // Logical pad inputs we map (subset of GCExtendedGamepad).
-enum InputID: Hashable {
+enum InputID: Hashable, CaseIterable {
     case a, b, x, y, menu
     case dpadUp, dpadDown, dpadLeft, dpadRight
     case leftShoulder, rightShoulder
 }
 
 // Semantic actions the output layer realizes as events.
-enum MediaAction: CustomStringConvertible {
+enum MediaAction: CustomStringConvertible, CaseIterable {
     case playPause
     case seekBack, seekForward
     case playerVolUp, playerVolDown     // arrow keys, driven by the left stick
@@ -40,7 +40,33 @@ enum MediaAction: CustomStringConvertible {
     }
 }
 
+extension MediaAction {
+    /// Human-readable name, shown in the Settings window.
+    var title: String {
+        switch self {
+        case .playPause: return "Play / pause"
+        case .seekBack: return "Seek back"
+        case .seekForward: return "Seek forward"
+        case .playerVolUp: return "Player volume +"
+        case .playerVolDown: return "Player volume −"
+        case .systemVolUp: return "System volume +"
+        case .systemVolDown: return "System volume −"
+        case .next: return "Next"
+        case .prev: return "Previous"
+        case .mute: return "Mute"
+        case .fullscreen: return "Fullscreen"
+        case .brightnessUp: return "Brightness +"
+        case .brightnessDown: return "Brightness −"
+        }
+    }
+}
+
 enum Mapping {
+
+    /// What a logical input does, from the preset. Drives the controller map.
+    static func function(for id: InputID) -> String? {
+        edgeTable.first { $0.0 == id }?.1.title
+    }
 
     // Button / D-pad / shoulder: fire once on press (rising edge).
     static let edgeTable: [(InputID, MediaAction)] = [
