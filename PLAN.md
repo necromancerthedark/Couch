@@ -133,6 +133,10 @@ Final key choices are yours to tweak in code (single constant table).
 - Replace "Remote: ON/OFF" text and the "Launch at Login" checkmark with real
   toggle switches.
 
+### Phase 7 — Volume Split: Stick = Player, D-pad = System — **DONE** (see §12, ADR-019)
+- Left stick up/down changes the **player** volume (arrow keys), analog.
+- D-pad ▲/▼ change the **system** volume, one notch per press.
+
 ## 7. Permissions Required
 
 - **Accessibility** — required to post `CGEvent`s (output layer only).
@@ -245,3 +249,78 @@ by the switch, not by the words ON/OFF).
 ### Open questions (defaults chosen)
 - Row title "Remote" vs "Remote enabled": default **"Remote"**.
 - Close the menu after toggling: default **stay open**.
+
+## 12. Next Update: Volume Split (Phase 7)
+
+### Goal
+Two clearly separate volume controls:
+- **Left stick ▲/▼ = player volume** (fast, analog).
+- **D-pad ▲/▼ = system volume** (precise, one notch per press).
+
+This replaces today's mapping where D-pad ▲/▼ send arrow keys (player volume).
+
+### Behaviour
+- **D-pad ▲ / ▼:** one system volume notch per press. Edge-triggered like the
+  other buttons, no repeat on hold (the controlled, predictable control).
+- **Left stick ▲ / ▼:** player volume through the arrow keys. A step fires
+  immediately on the push, then repeats while held. Pushing further repeats
+  faster (same linear ramp as trigger scrubbing, ADR-011).
+- Stick inside the deadzone: stops. Stick left/right does nothing. Right stick
+  stays unmapped.
+- Remote switch off: both are ignored, like every other input.
+
+### Design
+- **System volume output:** real NX system-defined events (ADR-015 path),
+  `NX_KEYTYPE_SOUND_UP` = 0, `NX_KEYTYPE_SOUND_DOWN` = 1. Add to the `NXKey`
+  enum. Each event is one notch and shows the macOS volume overlay.
+- **Actions:** add `systemVolUp` / `systemVolDown`. The existing `volUp` /
+  `volDown` (arrow keys) stay and are now fired only by the stick; rename them
+  `playerVolUp` / `playerVolDown` for clarity.
+- **Mapping:** in `Mapping.edgeTable`, `dpadUp` → `systemVolUp`, `dpadDown` →
+  `systemVolDown`.
+- **Stick input:** read `gp.leftThumbstick.yAxis.value` (-1…1). Up amount =
+  `max(0, y)`, down amount = `max(0, -y)`.
+- **Stick repeat:** reuse `AdaptiveRepeater` twice (up, down). `read` returns
+  the up or down amount, `threshold` is the deadzone. Fire the first step on
+  the rising edge, then `start()` for the repeats. `onIdle` clears the held
+  flags (same pattern as the triggers).
+- **State:** `volUpHeld` / `volDownHeld` in `MediaController`, reset in
+  `attach`, `detach`, and while Remote is off (stop repeaters, track state
+  without acting).
+- **Config (`config.json`, validated like the others):** `stickDeadzone`
+  (default 0.30, allowed 0.1 – 0.9), `volumeSlow` (0.30 s), `volumeFast`
+  (0.08 s). Defaults live in `Mapping.swift`.
+- **Docs:** README controls table, diagram and mapping text; ADR-019 (supersedes
+  the D-pad row of ADR-010); mark Phase 7 done.
+
+### Tradeoffs and risks
+- Behaviour change: D-pad ▲/▼ no longer touch the player. Anyone used to the
+  old mapping must use the stick for player volume.
+- Stick drift: a worn stick resting above 0.30 could creep the player volume.
+  Mitigation: tunable deadzone. Lower impact than system volume would be.
+- System volume has no hold-to-repeat, so a big change needs several presses.
+  Chosen on purpose for control; a repeat-on-hold option can come later.
+- Player step size depends on the app: YouTube 5% per arrow, IINA its own step.
+- No Accessibility, signing or grant change, so the grant survives the rebuild.
+
+### Implementation steps
+1. `OutputLayer`: add `soundUp` / `soundDown` to `NXKey`, handle
+   `systemVolUp` / `systemVolDown`, rename the arrow volume actions.
+2. `Mapping`: new actions, new D-pad mapping, stick defaults.
+3. `Config`: add and validate `stickDeadzone`, `volumeSlow`, `volumeFast`.
+4. `MediaController`: two repeaters, `handleStick(gp:)`, reset paths.
+5. README, ADR-019, mark Phase 7 done.
+
+### Test plan
+- D-pad ▲ / ▼: system volume moves one notch per press, macOS overlay shows,
+  the player's own volume does not change. Holding does not repeat.
+- Stick ▲ / ▼: immediate step, then repeats, faster when pushed further.
+  Release stops. The player volume changes, the system volume does not.
+- Remote off: neither works. Hold the stick, switch Remote on: no step until
+  released and pushed again.
+- Invalid `stickDeadzone` in `config.json`: logged, default used.
+- Rebuild with the stable identity, `trusted=true` stays.
+
+### Open questions (defaults chosen)
+- D-pad system volume repeats on hold: default **no**, one notch per press.
+- Stick keys: default **arrow ▲/▼** (works in IINA and YouTube).

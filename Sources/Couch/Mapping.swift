@@ -14,7 +14,8 @@ enum InputID: Hashable {
 enum MediaAction: CustomStringConvertible {
     case playPause
     case seekBack, seekForward
-    case volUp, volDown
+    case playerVolUp, playerVolDown     // arrow keys, driven by the left stick
+    case systemVolUp, systemVolDown     // macOS volume, driven by the D-pad
     case next, prev
     case mute
     case fullscreen
@@ -25,8 +26,10 @@ enum MediaAction: CustomStringConvertible {
         case .playPause: return "playPause"
         case .seekBack: return "seekBack"
         case .seekForward: return "seekForward"
-        case .volUp: return "volUp"
-        case .volDown: return "volDown"
+        case .playerVolUp: return "playerVolUp"
+        case .playerVolDown: return "playerVolDown"
+        case .systemVolUp: return "systemVolUp"
+        case .systemVolDown: return "systemVolDown"
         case .next: return "next"
         case .prev: return "prev"
         case .mute: return "mute"
@@ -44,8 +47,8 @@ enum Mapping {
         (.a, .playPause),
         (.dpadLeft, .seekBack),
         (.dpadRight, .seekForward),
-        (.dpadUp, .volUp),
-        (.dpadDown, .volDown),
+        (.dpadUp, .systemVolUp),          // ADR-019
+        (.dpadDown, .systemVolDown),      // ADR-019
         (.b, .next),
         (.x, .prev),
         (.menu, .mute),
@@ -76,5 +79,10 @@ enum Mapping {
     static let triggerThreshold: Float = 0.15
     static let seekSlowInterval: TimeInterval = 0.50  // just above threshold
     static let seekFastInterval: TimeInterval = 0.08  // full press
+
+    // Left stick Y = player volume (ADR-019). Same ramp idea as the triggers.
+    static let stickDeadzone: Float = 0.30
+    static let volumeSlowInterval: TimeInterval = 0.30  // just past the deadzone
+    static let volumeFastInterval: TimeInterval = 0.08  // full push
 
 }

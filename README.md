@@ -46,9 +46,11 @@ an extended gamepad should work too.
    │ brightness down    │          │ brightness up      │
    └────────────────────┘          └────────────────────┘
 
-        ▲ volume up                         ( Y )  fullscreen
-   ◄ seek   seek ►          [Menu] mute    ( X )  previous    ( B )  next
-        ▼ volume down                       ( A )  play / pause
+   D-pad:  ▲ system volume up                ( Y )  fullscreen
+           ◄ seek   seek ►     [Menu] mute    ( X )  previous    ( B )  next
+           ▼ system volume down                ( A )  play / pause
+
+   Left stick:  ▲ player volume up   ▼ player volume down
 ```
 
 | Pad input | Action | Sent as |
@@ -59,7 +61,8 @@ an extended gamepad should work too.
 | **Y** | Toggle fullscreen | `F` key (IINA, YouTube) |
 | **Menu** | Mute | media key |
 | **D-pad ◄ ►** | Seek back / forward | arrow keys |
-| **D-pad ▲ ▼** | Volume up / down | arrow keys |
+| **D-pad ▲ ▼** | System volume up / down, one notch per press | media key |
+| **Left stick ▲ ▼** | Player volume up / down. Hold to repeat, push further to go faster | arrow keys, repeating |
 | **LB / RB** | Brightness down / up | media key |
 | **LT / RT** | Hold to scrub back / forward | arrow keys, repeating |
 
@@ -136,7 +139,8 @@ each one. Remove the certificate later in Keychain Access.
 Optional file `~/Library/Application Support/Couch/config.json`:
 
 ```json
-{ "triggerThreshold": 0.15, "seekSlow": 0.5, "seekFast": 0.08 }
+{ "triggerThreshold": 0.15, "seekSlow": 0.5, "seekFast": 0.08,
+  "stickDeadzone": 0.30, "volumeSlow": 0.30, "volumeFast": 0.08 }
 ```
 
 | Key | Meaning | Allowed |
@@ -144,6 +148,9 @@ Optional file `~/Library/Application Support/Couch/config.json`:
 | `triggerThreshold` | How far a trigger must be pressed to count | 0.01 – 0.95 |
 | `seekSlow` | Seconds between seeks at a light press | `seekFast` – 5 |
 | `seekFast` | Seconds between seeks at a full press | 0.02 – `seekSlow` |
+| `stickDeadzone` | How far the left stick must be pushed to change volume | 0.1 – 0.9 |
+| `volumeSlow` | Seconds between volume steps just past the deadzone | `volumeFast` – 5 |
+| `volumeFast` | Seconds between volume steps at a full push | 0.02 – `volumeSlow` |
 
 Invalid values are logged and replaced by the defaults.
 

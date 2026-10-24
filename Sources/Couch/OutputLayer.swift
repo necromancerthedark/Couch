@@ -9,6 +9,8 @@ final class OutputLayer {
 
     // NX_KEYTYPE_* values for system-defined media key events (ADR-015).
     private enum NXKey: Int {
+        case soundUp = 0
+        case soundDown = 1
         case mute = 7
         case brightnessUp = 2
         case brightnessDown = 3
@@ -36,8 +38,10 @@ final class OutputLayer {
         case .brightnessUp:    postSystemKey(.brightnessUp)
         case .brightnessDown:  postSystemKey(.brightnessDown)
         case .fullscreen:      postKey(.f)
-        case .volUp:           postKey(.up)
-        case .volDown:         postKey(.down)
+        case .playerVolUp:     postKey(.up)
+        case .playerVolDown:   postKey(.down)
+        case .systemVolUp:     postSystemKey(.soundUp)
+        case .systemVolDown:   postSystemKey(.soundDown)
         case .seekBack:        postKey(.left)
         case .seekForward:     postKey(.right)
         }

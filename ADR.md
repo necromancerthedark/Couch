@@ -236,6 +236,19 @@ unless noted.
 - **Consequences:** If a text field has focus, `F` types a letter. Other
   players may use a different fullscreen key.
 
+## ADR-019 — Volume split: left stick = player, D-pad = system
+
+- **Status:** Accepted (supersedes the D-pad ▲/▼ row of ADR-010)
+- **Context:** D-pad ▲/▼ sent arrow keys, so only the player volume moved.
+  The user wanted a precise way to change the macOS system volume too.
+- **Decision:** D-pad ▲/▼ post `NX_KEYTYPE_SOUND_UP/DOWN` (one notch per press,
+  no repeat). The left stick Y axis sends arrow ▲/▼ with an analog repeat
+  (immediate step, deeper push repeats faster) through two `AdaptiveRepeater`s.
+  Tunable via `stickDeadzone`, `volumeSlow`, `volumeFast` in `config.json`.
+- **Consequences:** Two separate volume controls. Anyone used to the old D-pad
+  mapping uses the stick for player volume. A drifting stick only creeps the
+  player volume.
+
 ---
 
 ## Phase status
@@ -249,3 +262,4 @@ unless noted.
 | 4 | Menu-bar shell + polish | ✅ Dist app verified end to end |
 | 5 | Local distribution | ✅ Done (README, signing identity, grant helper) |
 | 6 | Menu toggle switches | ✅ Done (ADR-017) |
+| 7 | Volume split (stick = player, D-pad = system) | ✅ Done (ADR-019) |

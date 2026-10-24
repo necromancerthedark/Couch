@@ -15,6 +15,11 @@ final class MediaController {
     private var prevState: [InputID: Bool] = [:]
     private var ltSeek: AdaptiveRepeater!
     private var rtSeek: AdaptiveRepeater!
+    private var volUpRep: AdaptiveRepeater!
+    private var volDownRep: AdaptiveRepeater!
+    private var stickDeadzone: Float = Mapping.stickDeadzone
+    private var volUpHeld = false
+    private var volDownHeld = false
     private var pollTimer: Timer?
     private var triggerThreshold: Float = Mapping.triggerThreshold
     private var ltHeld = false
@@ -42,6 +47,7 @@ final class MediaController {
         DebugLog.log("start: controllers=\(GCController.controllers().count)")
         let cfg = Config.load()
         triggerThreshold = cfg.triggerThreshold
+        stickDeadzone = cfg.stickDeadzone
         ltSeek = AdaptiveRepeater(
             threshold: cfg.triggerThreshold,
             slow: cfg.seekSlow,
@@ -62,6 +68,26 @@ final class MediaController {
                 self.output.perform(.seekForward)
             }
         )
+
+        // Left stick Y = player volume: repeats while pushed, faster when further.
+        volUpRep = AdaptiveRepeater(
+            threshold: cfg.stickDeadzone, slow: cfg.volumeSlow, fast: cfg.volumeFast,
+            read: { [weak self] in max(0, self?.controller?.extendedGamepad?.leftThumbstick.yAxis.value ?? 0) },
+            fire: { [weak self] in
+                guard let self, self.enabled else { return }
+                self.output.perform(.playerVolUp)
+            }
+        )
+        volDownRep = AdaptiveRepeater(
+            threshold: cfg.stickDeadzone, slow: cfg.volumeSlow, fast: cfg.volumeFast,
+            read: { [weak self] in max(0, -(self?.controller?.extendedGamepad?.leftThumbstick.yAxis.value ?? 0)) },
+            fire: { [weak self] in
+                guard let self, self.enabled else { return }
+                self.output.perform(.playerVolDown)
+            }
+        )
+        volUpRep.onIdle = { [weak self] in self?.volUpHeld = false }
+        volDownRep.onIdle = { [weak self] in self?.volDownHeld = false }
 
         ltSeek.onIdle = { [weak self] in self?.ltHeld = false }
         rtSeek.onIdle = { [weak self] in self?.rtHeld = false }
@@ -97,8 +123,14 @@ final class MediaController {
         observers.removeAll()
         pollTimer?.invalidate()
         pollTimer = nil
+        stopAllRepeaters()
+    }
+
+    private func stopAllRepeaters() {
         ltSeek?.stop()
         rtSeek?.stop()
+        volUpRep?.stop()
+        volDownRep?.stop()
     }
 
     private func attach(_ c: GCController) {
@@ -107,10 +139,11 @@ final class MediaController {
         guard let gp = c.extendedGamepad else { return }
         controller = c
         onControllerChange?(c.vendorName?.trimmingCharacters(in: .whitespaces) ?? "Gamepad")
-        ltSeek.stop()
-        rtSeek.stop()
+        stopAllRepeaters()
         ltHeld = false
         rtHeld = false
+        volUpHeld = false
+        volDownHeld = false
         // Prime the framework: read full state ONCE before setting the handler.
         // GameController only starts updating an input after its first access
         // (pad-dump did exactly this; without it valueChangedHandler never fires).
@@ -126,10 +159,11 @@ final class MediaController {
             DebugLog.log("detach: vendorName='\(c.vendorName ?? "-")'")
             c.extendedGamepad?.valueChangedHandler = nil
             controller = nil
-            ltSeek?.stop()
-            rtSeek?.stop()
+            stopAllRepeaters()
             ltHeld = false
             rtHeld = false
+            volUpHeld = false
+            volDownHeld = false
             prevState.removeAll()
             onControllerChange?(nil)
             // Another pad still connected? Take it over.
@@ -146,15 +180,18 @@ final class MediaController {
         guard enabled else {
             // Track state without acting, so a button held or released while
             // off does not fire a bogus edge when Remote is switched back on.
-            ltSeek.stop()
-            rtSeek.stop()
+            stopAllRepeaters()
             ltHeld = gp.leftTrigger.value > triggerThreshold
             rtHeld = gp.rightTrigger.value > triggerThreshold
+            let y = gp.leftThumbstick.yAxis.value
+            volUpHeld = y > stickDeadzone
+            volDownHeld = y < -stickDeadzone
             for (id, _) in Mapping.edgeTable { prevState[id] = Mapping.value(id: id, gp: gp) }
             return
         }
         handleEdges(gp: gp)
         handleTriggers(gp: gp)
+        handleStick(gp: gp)
     }
 
     // Triggers: start/stop hold-to-seek on press/release edges.
@@ -166,6 +203,21 @@ final class MediaController {
         let rh = gp.rightTrigger.value > t
         if rh { if !rtHeld { rtSeek.start() } } else if rtHeld { rtSeek.stop() }
         rtHeld = rh
+    }
+
+    // Left stick Y: step immediately on the push, then repeat while held.
+    private func handleStick(gp: GCExtendedGamepad) {
+        let y = gp.leftThumbstick.yAxis.value
+        let up = y > stickDeadzone
+        if up {
+            if !volUpHeld { output.perform(.playerVolUp); volUpRep.start() }
+        } else if volUpHeld { volUpRep.stop() }
+        volUpHeld = up
+        let down = y < -stickDeadzone
+        if down {
+            if !volDownHeld { output.perform(.playerVolDown); volDownRep.start() }
+        } else if volDownHeld { volDownRep.stop() }
+        volDownHeld = down
     }
 
     // Log full input state, only when it changes.
