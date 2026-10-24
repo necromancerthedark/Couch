@@ -249,6 +249,49 @@ unless noted.
   mapping uses the stick for player volume. A drifting stick only creeps the
   player volume.
 
+## ADR-020 — Companion Settings window (SwiftUI)
+
+- **Status:** Accepted
+- **Context:** Tuning, the pad's state and debugging all needed a text editor or
+  Terminal. The user wanted a GUI as a companion to the menu-bar app, not a
+  replacement, with a visual map of what each button does.
+- **Decision:** A SwiftUI window (General, Controller, Tuning, Debug, About)
+  hosted in an `NSWindow`, opened from **Settings…** (⌘,) or by reopening the
+  app. The status item stays AppKit (ADR-008). The mapping stays fixed
+  (ADR-004): the Controller tab draws it from `Mapping`, so it cannot drift
+  from the real behaviour. Couch stays a menu-bar agent (`LSUIElement`) and
+  switches to `.regular` (Dock icon, main menu) only while the window is
+  open. The sidebar is a plain view, not `NavigationSplitView`, so it also
+  renders in the README screenshot capture.
+- **Consequences:** The window is optional; the menu works with it closed.
+  SwiftUI builds with Command Line Tools only. No change to signing or the
+  Accessibility grant.
+
+## ADR-021 — Observable models and live settings
+
+- **Status:** Accepted
+- **Context:** `MediaController` owned input, state and config, read once at
+  launch. The window needs to observe state and change settings live.
+- **Decision:** Split out `SettingsStore` (validates, saves debounced, applies
+  live via `MediaController.reconfigure`), `PadMonitor` (pad snapshot, fed only
+  while the window is open), `EventLog` (500-line ring fed by `DebugLog.sink`)
+  and `AppModel` (owns them and the input layer, shared by menu and window).
+  Validation moved into `Config.validate` with shared `Config.Limits`.
+- **Consequences:** Slider changes take effect without a relaunch, and
+  `config.json` stays hand-editable. The menu and window stay in sync through
+  `AppModel`. No extra work happens while the window is closed.
+
+## ADR-022 — README screenshots rendered in-process
+
+- **Status:** Accepted
+- **Context:** README images should match the real UI and be reproducible.
+- **Decision:** `Couch --screenshots <dir>` (`Scripts/make-screenshots.sh`)
+  opens the real window with demo data, selects each tab, and captures it with
+  `cacheDisplay`. It captures the app's own window, so it needs no Screen
+  Recording permission, no pad, and never starts the input layer or sends
+  keys.
+- **Consequences:** Screenshots can be regenerated after any UI change.
+
 ---
 
 ## Phase status
@@ -263,3 +306,4 @@ unless noted.
 | 5 | Local distribution | ✅ Done (README, signing identity, grant helper) |
 | 6 | Menu toggle switches | ✅ Done (ADR-017) |
 | 7 | Volume split (stick = player, D-pad = system) | ✅ Done (ADR-019) |
+| 8 | Settings window (companion GUI) | ✅ Done (ADR-020–022) |

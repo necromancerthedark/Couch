@@ -8,6 +8,8 @@ import ApplicationServices
 final class MediaController {
     var enabled = true
     var onControllerChange: ((String?) -> Void)?
+    /// Receives pad state for the Controller tab (only used while observed).
+    weak var monitor: PadMonitor?
 
     private let output = OutputLayer()
     private var controller: GCController?
@@ -40,57 +42,12 @@ final class MediaController {
 
     // MARK: Lifecycle
 
-    func start() {
+    func start(config cfg: Config.Values) {
         // Menu-bar agent is never frontmost; without this GameController
         // delivers no input to a background process.
         GCController.shouldMonitorBackgroundEvents = true
         DebugLog.log("start: controllers=\(GCController.controllers().count)")
-        let cfg = Config.load()
-        triggerThreshold = cfg.triggerThreshold
-        stickDeadzone = cfg.stickDeadzone
-        ltSeek = AdaptiveRepeater(
-            threshold: cfg.triggerThreshold,
-            slow: cfg.seekSlow,
-            fast: cfg.seekFast,
-            read: { [weak self] in self?.controller?.extendedGamepad?.leftTrigger.value ?? 0 },
-            fire: { [weak self] in
-                guard let self, self.enabled else { return }
-                self.output.perform(.seekBack)
-            }
-        )
-        rtSeek = AdaptiveRepeater(
-            threshold: cfg.triggerThreshold,
-            slow: cfg.seekSlow,
-            fast: cfg.seekFast,
-            read: { [weak self] in self?.controller?.extendedGamepad?.rightTrigger.value ?? 0 },
-            fire: { [weak self] in
-                guard let self, self.enabled else { return }
-                self.output.perform(.seekForward)
-            }
-        )
-
-        // Left stick Y = player volume: repeats while pushed, faster when further.
-        volUpRep = AdaptiveRepeater(
-            threshold: cfg.stickDeadzone, slow: cfg.volumeSlow, fast: cfg.volumeFast,
-            read: { [weak self] in max(0, self?.controller?.extendedGamepad?.leftThumbstick.yAxis.value ?? 0) },
-            fire: { [weak self] in
-                guard let self, self.enabled else { return }
-                self.output.perform(.playerVolUp)
-            }
-        )
-        volDownRep = AdaptiveRepeater(
-            threshold: cfg.stickDeadzone, slow: cfg.volumeSlow, fast: cfg.volumeFast,
-            read: { [weak self] in max(0, -(self?.controller?.extendedGamepad?.leftThumbstick.yAxis.value ?? 0)) },
-            fire: { [weak self] in
-                guard let self, self.enabled else { return }
-                self.output.perform(.playerVolDown)
-            }
-        )
-        volUpRep.onIdle = { [weak self] in self?.volUpHeld = false }
-        volDownRep.onIdle = { [weak self] in self?.volDownHeld = false }
-
-        ltSeek.onIdle = { [weak self] in self?.ltHeld = false }
-        rtSeek.onIdle = { [weak self] in self?.rtHeld = false }
+        buildRepeaters(cfg)
 
         if let first = GCController.controllers().first { attach(first) }
 
@@ -118,6 +75,70 @@ final class MediaController {
         RunLoop.main.add(poll, forMode: .common)
     }
 
+    /// Apply new tuning values live (Settings window). Stops anything running
+    /// and clears held flags, as on attach, so no repeat outlives its settings.
+    func reconfigure(_ cfg: Config.Values) {
+        guard ltSeek != nil else { return }
+        stopAllRepeaters()
+        ltHeld = false
+        rtHeld = false
+        volUpHeld = false
+        volDownHeld = false
+        buildRepeaters(cfg)
+        DebugLog.log("settings: applied live")
+    }
+
+    /// Fire an action as if the pad did (Debug tab action tester).
+    func perform(_ action: MediaAction) {
+        output.perform(action)
+    }
+
+    private func buildRepeaters(_ cfg: Config.Values) {
+        triggerThreshold = cfg.triggerThreshold
+        stickDeadzone = cfg.stickDeadzone
+        ltSeek = AdaptiveRepeater(
+            threshold: cfg.triggerThreshold,
+            slow: cfg.seekSlow,
+            fast: cfg.seekFast,
+            read: { [weak self] in self?.controller?.extendedGamepad?.leftTrigger.value ?? 0 },
+            fire: { [weak self] in
+                guard let self, self.enabled else { return }
+                self.output.perform(.seekBack)
+            }
+        )
+        rtSeek = AdaptiveRepeater(
+            threshold: cfg.triggerThreshold,
+            slow: cfg.seekSlow,
+            fast: cfg.seekFast,
+            read: { [weak self] in self?.controller?.extendedGamepad?.rightTrigger.value ?? 0 },
+            fire: { [weak self] in
+                guard let self, self.enabled else { return }
+                self.output.perform(.seekForward)
+            }
+        )
+        // Left stick Y = player volume: repeats while pushed, faster when further.
+        volUpRep = AdaptiveRepeater(
+            threshold: cfg.stickDeadzone, slow: cfg.volumeSlow, fast: cfg.volumeFast,
+            read: { [weak self] in max(0, self?.controller?.extendedGamepad?.leftThumbstick.yAxis.value ?? 0) },
+            fire: { [weak self] in
+                guard let self, self.enabled else { return }
+                self.output.perform(.playerVolUp)
+            }
+        )
+        volDownRep = AdaptiveRepeater(
+            threshold: cfg.stickDeadzone, slow: cfg.volumeSlow, fast: cfg.volumeFast,
+            read: { [weak self] in max(0, -(self?.controller?.extendedGamepad?.leftThumbstick.yAxis.value ?? 0)) },
+            fire: { [weak self] in
+                guard let self, self.enabled else { return }
+                self.output.perform(.playerVolDown)
+            }
+        )
+        volUpRep.onIdle = { [weak self] in self?.volUpHeld = false }
+        volDownRep.onIdle = { [weak self] in self?.volDownHeld = false }
+        ltSeek.onIdle = { [weak self] in self?.ltHeld = false }
+        rtSeek.onIdle = { [weak self] in self?.rtHeld = false }
+    }
+
     func stop() {
         observers.forEach { NotificationCenter.default.removeObserver($0) }
         observers.removeAll()
@@ -138,6 +159,7 @@ final class MediaController {
         // Not an extended gamepad: nothing we can map, so don't show it as live.
         guard let gp = c.extendedGamepad else { return }
         controller = c
+        monitor?.setDevice(c)
         onControllerChange?(c.vendorName?.trimmingCharacters(in: .whitespaces) ?? "Gamepad")
         stopAllRepeaters()
         ltHeld = false
@@ -159,6 +181,7 @@ final class MediaController {
             DebugLog.log("detach: vendorName='\(c.vendorName ?? "-")'")
             c.extendedGamepad?.valueChangedHandler = nil
             controller = nil
+            monitor?.setDevice(nil)
             stopAllRepeaters()
             ltHeld = false
             rtHeld = false
@@ -177,6 +200,7 @@ final class MediaController {
 
     private func handle(gp: GCExtendedGamepad) {
         logState(gp: gp)
+        monitor?.update(gp: gp)
         guard enabled else {
             // Track state without acting, so a button held or released while
             // off does not fire a bogus edge when Remote is switched back on.
