@@ -6,7 +6,12 @@ import CoreGraphics
 import ApplicationServices
 
 final class MediaController {
+    /// Remote switch (menu / Settings).
     var enabled = true
+    /// False while the frontmost app is not allowed by the app filter (ADR-023).
+    var appAllowed = true
+    /// Couch acts only when the Remote switch is on and the frontmost app is allowed.
+    private var isActive: Bool { enabled && appAllowed }
     var onControllerChange: ((String?) -> Void)?
     /// Receives pad state for the Controller tab (only used while observed).
     weak var monitor: PadMonitor?
@@ -102,7 +107,7 @@ final class MediaController {
             fast: cfg.seekFast,
             read: { [weak self] in self?.controller?.extendedGamepad?.leftTrigger.value ?? 0 },
             fire: { [weak self] in
-                guard let self, self.enabled else { return }
+                guard let self, self.isActive else { return }
                 self.output.perform(.seekBack)
             }
         )
@@ -112,7 +117,7 @@ final class MediaController {
             fast: cfg.seekFast,
             read: { [weak self] in self?.controller?.extendedGamepad?.rightTrigger.value ?? 0 },
             fire: { [weak self] in
-                guard let self, self.enabled else { return }
+                guard let self, self.isActive else { return }
                 self.output.perform(.seekForward)
             }
         )
@@ -121,7 +126,7 @@ final class MediaController {
             threshold: cfg.stickDeadzone, slow: cfg.volumeSlow, fast: cfg.volumeFast,
             read: { [weak self] in max(0, self?.controller?.extendedGamepad?.leftThumbstick.yAxis.value ?? 0) },
             fire: { [weak self] in
-                guard let self, self.enabled else { return }
+                guard let self, self.isActive else { return }
                 self.output.perform(.playerVolUp)
             }
         )
@@ -129,7 +134,7 @@ final class MediaController {
             threshold: cfg.stickDeadzone, slow: cfg.volumeSlow, fast: cfg.volumeFast,
             read: { [weak self] in max(0, -(self?.controller?.extendedGamepad?.leftThumbstick.yAxis.value ?? 0)) },
             fire: { [weak self] in
-                guard let self, self.enabled else { return }
+                guard let self, self.isActive else { return }
                 self.output.perform(.playerVolDown)
             }
         )
@@ -201,9 +206,10 @@ final class MediaController {
     private func handle(gp: GCExtendedGamepad) {
         logState(gp: gp)
         monitor?.update(gp: gp)
-        guard enabled else {
+        guard isActive else {
             // Track state without acting, so a button held or released while
-            // off does not fire a bogus edge when Remote is switched back on.
+            // paused (Remote off, or an unlisted app in front) does not fire a
+            // bogus edge when Couch becomes active again.
             stopAllRepeaters()
             ltHeld = gp.leftTrigger.value > triggerThreshold
             rtHeld = gp.rightTrigger.value > triggerThreshold

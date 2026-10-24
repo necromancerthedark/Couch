@@ -10,6 +10,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private var remoteRow: ToggleMenuItemView!
     private var loginRow: ToggleMenuItemView!
     private var padConnected = false
+    private var padName: String?
+    private var allowItem: NSMenuItem!
     private let model = AppModel()
     private lazy var settingsWindow = SettingsWindowController(model: model)
     private var cancellables = Set<AnyCancellable>()
@@ -29,6 +31,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         padItem = NSMenuItem(title: "No controller", action: nil, keyEquivalent: "")
         padItem.isEnabled = false
         menu.addItem(padItem)
+
+        // Shown only while the app filter is blocking the frontmost app (ADR-023).
+        allowItem = NSMenuItem(title: "Allow", action: #selector(allowFrontmost), keyEquivalent: "")
+        allowItem.target = self
+        allowItem.isHidden = true
+        menu.addItem(allowItem)
         menu.addItem(.separator())
 
         remoteRow = ToggleMenuItemView(title: "Remote", isOn: model.remoteEnabled) { [weak self] on in
@@ -75,9 +83,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
         model.media.onControllerChange = { [weak self] name in
             self?.padConnected = name != nil
-            self?.padItem.title = name.map { "Controller: \($0)" } ?? "No controller"
-            self?.updateUI(on: self?.model.remoteEnabled ?? true)
+            self?.padName = name
+            self?.refreshStatus()
         }
+        model.$pausedIn
+            .receive(on: DispatchQueue.main)   // read the new value, not the old one
+            .sink { [weak self] _ in self?.refreshStatus() }
+            .store(in: &cancellables)
 
         // Keep the menu switch and icon in step when the window changes Remote.
         model.$remoteEnabled
@@ -124,23 +136,42 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         NSApp.windowsMenu = win
     }
 
+    /// Controller line: pad name, plus where Couch is paused by the app filter.
+    private func refreshStatus() {
+        var title = padName.map { "Controller: \($0)" } ?? "No controller"
+        if padName != nil, model.remoteEnabled, let app = model.pausedIn {
+            title += " · paused in \(app)"
+        }
+        padItem.title = title
+        updateUI(on: model.remoteEnabled)
+    }
+
     private func updateUI(on: Bool) {
         remoteRow.isOn = on
-        // Filled icon = live; outline = remote off or no pad.
-        let live = on && padConnected
+        // Filled icon = live; outline = remote off, no pad, or paused by the app filter.
+        let live = on && padConnected && model.pausedIn == nil
         statusItem.button?.image = NSImage(
             systemSymbolName: live ? "gamecontroller.fill" : "gamecontroller",
             accessibilityDescription: "Couch")
-        statusItem.button?.toolTip = on
-            ? "Couch — media remote (on)"
-            : "Couch — media remote (off)"
+        statusItem.button?.toolTip = !on ? "Couch — media remote (off)"
+            : (model.pausedIn.map { "Couch — paused in \($0)" } ?? "Couch — media remote (on)")
     }
 
     // Re-read both states so changes made elsewhere (Login Items) show up.
     func menuWillOpen(_ menu: NSMenu) {
         model.refreshLaunchAtLogin()
+        if let app = model.allowableFrontmost {
+            allowItem.title = "Allow \(app.name)"
+            allowItem.isHidden = false
+        } else {
+            allowItem.isHidden = true
+        }
         remoteRow.isOn = model.remoteEnabled
         loginRow.isOn = model.launchAtLogin
+    }
+
+    @objc private func allowFrontmost() {
+        model.allowFrontmost()
     }
 
     @objc private func openSettings() {

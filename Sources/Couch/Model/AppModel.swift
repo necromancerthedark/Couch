@@ -13,6 +13,13 @@ final class AppModel: ObservableObject {
     let pad = PadMonitor()
     let events = EventLog()
     let media = MediaController()
+    let front: FrontmostAppMonitor
+
+    /// Name of the app Couch is paused in because of the app filter, or nil
+    /// when the filter allows the frontmost app (ADR-023).
+    @Published private(set) var pausedIn: String?
+    private var cancellables = Set<AnyCancellable>()
+    static let ownBundleID = Bundle.main.bundleIdentifier ?? "local.couch"
 
     @Published var remoteEnabled = true {
         didSet { media.enabled = remoteEnabled }
@@ -23,6 +30,7 @@ final class AppModel: ObservableObject {
     init(demo: Bool = false) {
         self.demo = demo
         self.settings = SettingsStore(demo: demo)
+        self.front = FrontmostAppMonitor(demo: demo)
         self.accessibilityTrusted = demo ? true : AXIsProcessTrusted()
         self.launchAtLogin = demo ? true : SMAppService.mainApp.status == .enabled
         settings.onChange = { [weak self] values in self?.media.reconfigure(values) }
@@ -30,6 +38,56 @@ final class AppModel: ObservableObject {
             pad.loadDemo()
             events.loadDemo()
         }
+        Publishers.CombineLatest(front.$current, settings.$values.map(\.appFilter).removeDuplicates())
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] app, filter in self?.evaluateFilter(app: app, filter: filter) }
+            .store(in: &cancellables)
+    }
+
+    // MARK: App filter (ADR-023)
+
+    private func evaluateFilter(app: FrontApp?, filter: AppFilter) {
+        let allowed = filter.allows(app?.bundleID)
+        media.appAllowed = allowed
+        let paused = allowed ? nil : (app?.name ?? "no app")
+        guard paused != pausedIn else { return }
+        pausedIn = paused
+        if !demo {
+            DebugLog.log(paused.map { "filter: paused in \($0) (\(app?.bundleID ?? "-"))" }
+                         ?? "filter: active in \(app?.name ?? "-")")
+        }
+    }
+
+    /// The frontmost app, if the filter is blocking it and the user could allow it.
+    var allowableFrontmost: FrontApp? {
+        guard settings.values.appFilter.mode == .allowlist,
+              let app = front.current,
+              app.bundleID != Self.ownBundleID,
+              !settings.values.appFilter.allows(app.bundleID) else { return nil }
+        return app
+    }
+
+    func allowFrontmost() {
+        if let app = allowableFrontmost { allowApp(app.bundleID) }
+    }
+
+    func allowApp(_ bundleID: String) {
+        var f = settings.values.appFilter
+        guard !f.apps.contains(bundleID) else { return }
+        f.apps.append(bundleID)
+        settings.values.appFilter = f
+    }
+
+    func removeApp(_ bundleID: String) {
+        settings.values.appFilter.apps.removeAll { $0 == bundleID }
+    }
+
+    func resetApps() {
+        settings.values.appFilter.apps = AppFilter.defaultApps
+    }
+
+    func setFilterMode(_ mode: AppFilter.Mode) {
+        settings.values.appFilter.mode = mode
     }
 
     /// Start the input layer. Not used in demo mode (no pad, no key events).
@@ -110,6 +168,9 @@ final class AppModel: ObservableObject {
             "Signing: \(demo ? "Couch Local Signing" : Self.signingIdentity)",
             "Accessibility: \(accessibilityTrusted ? "trusted" : "NOT trusted")",
             "Remote: \(remoteEnabled ? "on" : "off")",
+            "Frontmost app: \(front.current.map { "\($0.name) (\($0.bundleID))" } ?? "none")",
+            "App filter: \(settings.values.appFilter.mode.rawValue), \(settings.values.appFilter.apps.count) apps",
+            "Couch is: \(!remoteEnabled ? "off (Remote switch)" : (pausedIn.map { "paused in \($0)" } ?? "active"))",
             "Launch at login: \(launchAtLogin ? "on" : "off")",
             "Background input: \(GCController.shouldMonitorBackgroundEvents ? "on" : "off")",
             "Controller: \(d.map { "\($0.name) (\($0.category)), battery \($0.battery)" } ?? "none")",

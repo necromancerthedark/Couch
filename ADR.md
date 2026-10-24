@@ -292,6 +292,28 @@ unless noted.
   keys.
 - **Consequences:** Screenshots can be regenerated after any UI change.
 
+## ADR-023 — App allowlist: act only in allowed frontmost apps
+
+- **Status:** Accepted
+- **Context:** Couch reads the pad in the background (ADR-013) and posts system-wide
+  keys (play/pause, volume, brightness, `F`, arrows). While a game was in front, the
+  game received them too.
+- **Decision:** `AppFilter` (mode `allowlist` or `off`, list of bundle ids) decides
+  whether Couch acts. `FrontmostAppMonitor` tracks the frontmost app through
+  `NSWorkspace`, which needs no permission. `MediaController` acts only when
+  `enabled && appAllowed`; otherwise it tracks pad state without acting, the same
+  path as Remote off, so a button held across an app switch does not fire. Default
+  is an allowlist (fails safe: an unlisted game is silent). Couch never acts in
+  itself. The menu shows "paused in <App>" and an **Allow <App>** item; the Apps tab
+  edits the list; config lives in `config.json` under `appFilter`.
+- **Alternatives rejected:** a denylist (every new game would need listing first),
+  auto-detecting fullscreen or Games-category apps (unpredictable), and media keys
+  working everywhere (would bring back play/pause in games). The last may return as
+  an opt-in.
+- **Consequences:** Behaviour change: a fresh install does nothing in unlisted apps.
+  A video playing in a background app cannot be controlled from the pad. Unit tests
+  now cover the filter and config validation (`Scripts/test.sh`).
+
 ---
 
 ## Phase status
@@ -307,3 +329,4 @@ unless noted.
 | 6 | Menu toggle switches | ✅ Done (ADR-017) |
 | 7 | Volume split (stick = player, D-pad = system) | ✅ Done (ADR-019) |
 | 8 | Settings window (companion GUI) | ✅ Done (ADR-020–022) |
+| 9 | App allowlist | ✅ Done (ADR-023) |
