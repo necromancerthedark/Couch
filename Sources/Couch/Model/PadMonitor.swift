@@ -71,19 +71,20 @@ final class PadMonitor: ObservableObject {
         snapshot = PadSnapshot(pressed: [.a, .rightShoulder], lt: 0.55, rt: 0,
                                ls: Vec2(x: -0.12, y: 0.74), rs: Vec2())
         device = DeviceInfo(name: "Xbox Bluetooth Gamepad", category: "Xbox One",
-                            battery: "78% · discharging", haptics: false, light: false)
+                            battery: "Not reported", haptics: true, light: false)
     }
 
     private static func info(for c: GCController) -> DeviceInfo {
+        // Many Bluetooth pads expose a battery object but report level 0 and
+        // state unknown. Show that as "Not reported", not a dead battery.
         var battery = "Not reported"
-        if let b = c.battery {
+        if let b = c.battery, b.batteryState != .unknown {
             let pct = Int((b.batteryLevel * 100).rounded())
             let state: String
             switch b.batteryState {
             case .charging: state = "charging"
             case .full: state = "full"
-            case .discharging: state = "discharging"
-            default: state = "unknown"
+            default: state = "discharging"
             }
             battery = "\(pct)% · \(state)"
         }
