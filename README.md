@@ -26,6 +26,21 @@ extended gamepad should work too.
 Brightness keys control the system display. They may do nothing on an
 external monitor.
 
+## Install (prebuilt)
+
+Download `Couch-v0.1.zip` from the Releases page and unzip it. Move
+`Couch.app` to `/Applications`.
+
+The app is signed with a local self-signed certificate and is **not
+notarized**, so Gatekeeper blocks the first launch. Either right-click the app
+→ Open → Open, or run:
+
+```sh
+xattr -dr com.apple.quarantine /Applications/Couch.app
+```
+
+Then do the Accessibility step below. Apple silicon only (arm64).
+
 ## Build and run
 
 Needs macOS 13+ and Swift 5.9+. Command Line Tools are enough, Xcode is not
