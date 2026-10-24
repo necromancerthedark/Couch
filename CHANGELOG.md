@@ -10,6 +10,9 @@ versions follow [Semantic Versioning](https://semver.org/) (pre-1.0: a minor bum
 
 ## [Unreleased]
 
+### Changed
+- CI: GitHub Actions builds, tests and packages every pull request.
+
 ## [0.4] - 2026-10-25
 
 ### Added
