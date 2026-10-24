@@ -133,6 +133,7 @@ unless noted.
   | B | Next track/video | media `0xF88E` |
   | X | Previous track/video | media `0xF88F` |
   | Menu | Mute | media `0xF8A2` |
+  | Y | Toggle fullscreen | `F` key (ADR-018) |
   | LB (leftShoulder) | Brightness down | media `0xF8A0` |
   | RB (rightShoulder) | Brightness up | media `0xF8A1` |
 - **Consequences:** Edge-triggered (fire on press). Defined once in
@@ -224,6 +225,16 @@ unless noted.
 - **Consequences:** Menu stays open after a toggle. Those two rows lose the
   standard hover highlight and arrow-key navigation; the whole row is
   clickable instead.
+
+## ADR-018 — Y toggles fullscreen with the F key
+
+- **Status:** Accepted
+- **Context:** Y was unmapped. Fullscreen is a common player action.
+- **Decision:** Y posts the `F` key (virtual key 0x03). IINA and YouTube both
+  toggle video fullscreen on `F`. The system shortcut ⌃⌘F was rejected: it
+  fullscreens the browser window, not the video.
+- **Consequences:** If a text field has focus, `F` types a letter. Other
+  players may use a different fullscreen key.
 
 ---
 

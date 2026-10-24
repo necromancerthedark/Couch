@@ -17,6 +17,7 @@ enum MediaAction: CustomStringConvertible {
     case volUp, volDown
     case next, prev
     case mute
+    case fullscreen
     case brightnessUp, brightnessDown
 
     var description: String {
@@ -29,6 +30,7 @@ enum MediaAction: CustomStringConvertible {
         case .next: return "next"
         case .prev: return "prev"
         case .mute: return "mute"
+        case .fullscreen: return "fullscreen"
         case .brightnessUp: return "brightnessUp"
         case .brightnessDown: return "brightnessDown"
         }
@@ -47,6 +49,7 @@ enum Mapping {
         (.b, .next),
         (.x, .prev),
         (.menu, .mute),
+        (.y, .fullscreen),                // ADR-018
         (.leftShoulder, .brightnessDown), // ADR-012
         (.rightShoulder, .brightnessUp)   // ADR-012
     ]

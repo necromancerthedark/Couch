@@ -17,6 +17,7 @@ extended gamepad should work too.
 | B | Next track |
 | X | Previous track |
 | Menu | Mute |
+| Y | Toggle fullscreen (`F` key: IINA, YouTube) |
 | D-pad ◄ / ► | Seek back / forward (arrow keys) |
 | D-pad ▲ / ▼ | Volume up / down (arrow keys) |
 | LB / RB | Brightness down / up |

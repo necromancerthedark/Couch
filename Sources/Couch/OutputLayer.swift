@@ -23,6 +23,7 @@ final class OutputLayer {
         case right = 0x7C
         case up    = 0x7E
         case down  = 0x7D
+        case f     = 0x03   // fullscreen in IINA and YouTube
     }
 
     func perform(_ action: MediaAction) {
@@ -34,6 +35,7 @@ final class OutputLayer {
         case .mute:            postSystemKey(.mute)
         case .brightnessUp:    postSystemKey(.brightnessUp)
         case .brightnessDown:  postSystemKey(.brightnessDown)
+        case .fullscreen:      postKey(.f)
         case .volUp:           postKey(.up)
         case .volDown:         postKey(.down)
         case .seekBack:        postKey(.left)
